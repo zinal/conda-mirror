@@ -109,3 +109,6 @@ junit*
 .ipynb_checkpoints
 *.ipynb
 tmp/
+
+# Rever
+rever/

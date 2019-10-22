@@ -14,12 +14,13 @@ $ACTIVITIES = [
 $PROJECT = $GITHUB_REPO = "conda-mirror"
 $GITHUB_ORG = "regro"
 $AUTHORS_FILENAME = "AUTHORS.md"
+$PYPU_SIGN = False
 
 #
 # Changelog settings
 #
 $CHANGELOG_FILENAME = "CHANGELOG.md"
-$CHANGELOG_FILENAME = "TEMPLATE.md"
+$CHANGELOG_TEMPLATE = "TEMPLATE.md"
 $CHANGELOG_PATTERN = "<!-- current developments -->"
 $CHANGELOG_HEADER = """<!-- current developments -->
 
