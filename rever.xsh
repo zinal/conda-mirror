@@ -41,4 +41,3 @@ def title_formatter(category):
 
 $CHANGELOG_CATEGORY_TITLE_FORMAT = title_formatter
 $CHANGELOG_AUTHORS_TITLE = "Contributors"
-$CHANGELOG_AUTHORS_FORMAT = "* @{github}\n"
