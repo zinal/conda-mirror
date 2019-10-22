@@ -14,7 +14,7 @@ $ACTIVITIES = [
 $PROJECT = $GITHUB_REPO = "conda-mirror"
 $GITHUB_ORG = "regro"
 $AUTHORS_FILENAME = "AUTHORS.md"
-$PYPU_SIGN = False
+$PYPI_SIGN = False
 
 #
 # Changelog settings
