@@ -1,5 +1,21 @@
 # Change Log
 
+<!-- current developments -->
+
+## [0.8.1](https://github.com/regro/conda-mirror/tree/0.8.1) (2019-20-22)
+
+**Implemented enhancements:**
+
+* Added proxy support (`--proxy`) for running conda-mirror HTTP requests through a
+  proxy server.
+* Added Certificate authority checking via `--ssl-verify` option.
+* New capability to run in insecure mode `-k, --insecure`.
+* May now pass in the number of retries for HTTP requests with `--max-retries`.
+
+**Contributors:**
+
+* Anthony Scopatz
+
 ## [0.8.0](https://github.com/maxpoint/conda-mirror/tree/0.8.0)
 
 - Improve validation performance [\#69](https://github.com/maxpoint/conda-mirror/issues/69)
