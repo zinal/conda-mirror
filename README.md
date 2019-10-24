@@ -1,9 +1,8 @@
 # conda-mirror
 
-[![Project Status: Inactive – The project has reached a stable, usable state but is no longer being actively developed; support/maintenance will be provided as time allows.](https://www.repostatus.org/badges/latest/inactive.svg)](https://www.repostatus.org/#inactive)
-[![Build Status](https://travis-ci.org/Valassis-Digital-Media/conda-mirror.svg?branch=master)](https://travis-ci.org/Valassis-Digital-Media/conda-mirror)
+[![Build Status](https://travis-ci.org/regro/conda-mirror.svg?branch=master)](https://travis-ci.org/regro/conda-mirror)
 [![PyPI version](https://badge.fury.io/py/conda-mirror.svg)](https://badge.fury.io/py/conda-mirror)
-[![codecov](https://codecov.io/gh/Valassis-Digital-Media/conda-mirror/branch/master/graph/badge.svg)](https://codecov.io/gh/Valassis-Digital-Media/conda-mirror)
+[![codecov](https://codecov.io/gh/regro/conda-mirror/branch/master/graph/badge.svg)](https://codecov.io/gh/regro/conda-mirror)
 
 Mirrors an upstream conda channel to a local directory.
 
