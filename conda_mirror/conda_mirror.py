@@ -56,7 +56,7 @@ def _maybe_split_channel(channel):
     # strip trailing slashes
     channel = channel.strip('/')
 
-    default_url_base = "https://conda.anaconda.org/"
+    default_url_base = "https://conda.anaconda.org"
     url_suffix = "/{channel}/{platform}/{file_name}"
     if '://' not in channel:
         # assume we are being given a channel for anaconda.org
