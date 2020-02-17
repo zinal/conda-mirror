@@ -99,6 +99,7 @@ class DiffTarTests(unittest.TestCase):
         self.run_with_args(['--show', dt.mirror_dir])
         self.run_with_args(['--create', '--verbose', dt.mirror_dir])
         self.run_with_args(['--verify', dt.mirror_dir])
+        self.run_with_args([dt.mirror_dir])  # do nothing
 
 
 if __name__ == '__main__':
