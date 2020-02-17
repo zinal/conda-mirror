@@ -1,3 +1,9 @@
+"""
+Implementation of the conda-diff-tar command, a tools which allows creating
+differential tarballs of a (usually mirrored) conda repository.  The resulting
+tarball can be used to update a copy of the mirror on a remote (air-gapped)
+system, without having to copy the entire conda repository.
+"""
 import os
 import sys
 import json
