@@ -106,19 +106,18 @@ def get_updates():
                 yield relpath(join(repo_path, fn), mirror_dir)
 
 
-def tar_repo(verbose=False):
+def tar_repo(outfile='update.tar', verbose=False):
     """
     Write the so-called differential tarball, see get_updates().
     """
-    fn = 'update.tar'
-    t = tarfile.open(fn, 'w')
+    t = tarfile.open(outfile, 'w')
     for f in get_updates():
         if verbose:
             print('adding: %s' % f)
         t.add(join(mirror_dir, f), f)
     t.close()
     if verbose:
-        print("Wrote: %s" % fn)
+        print("Wrote: %s" % outfile)
 
 
 def main():
@@ -169,7 +168,7 @@ def main():
         sys.exit("No such directory: %r" % mirror_dir)
 
     if opts.create:
-        tar_repo(opts.verbose)
+        tar_repo(verbose=opts.verbose)
         return
 
     if opts.verify:
