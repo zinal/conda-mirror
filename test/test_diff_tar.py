@@ -77,6 +77,7 @@ class DiffTarTests(unittest.TestCase):
         self.create_test_repo()
         tarball = join(self.tmpdir, 'up.tar')
         dt.write_reference()
+        self.create_test_repo('win-32')
         dt.tar_repo(tarball)
         self.assertTrue(isfile(tarball))
 
