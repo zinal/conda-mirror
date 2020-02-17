@@ -3,7 +3,7 @@ import json
 import shutil
 import unittest
 import tempfile
-from os.path import join
+from os.path import isfile, join
 
 import conda_mirror.diff_tar as dt
 
@@ -65,6 +65,13 @@ class DiffTarTests(unittest.TestCase):
         self.create_test_repo()
         dt.write_reference()
         self.assertEqual(list(dt.get_updates()), [])
+
+    def test_tar_repo(self):
+        self.create_test_repo()
+        tarball = join(self.tmpdir, 'up.tar')
+        dt.write_reference()
+        dt.tar_repo(tarball)
+        self.assertTrue(isfile(tarball))
 
 
 if __name__ == '__main__':
