@@ -9,6 +9,7 @@ from os.path import abspath, isdir, join, relpath
 mirror_dir = None
 reference_path = './reference.json'
 
+
 def md5_file(path):
     """
     Return the MD5 hashsum of the file given by `path` in hexadecimal
