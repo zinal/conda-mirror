@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import shutil
 import unittest
@@ -80,6 +81,24 @@ class DiffTarTests(unittest.TestCase):
         self.create_test_repo('win-32')
         dt.tar_repo(tarball)
         self.assertTrue(isfile(tarball))
+
+    def run_with_args(self, args):
+        old_args = list(sys.argv)
+        sys.argv = ['conda-diff-tar'] + args
+        dt.main()
+        sys.argv = old_args
+
+    def test_version(self):
+        self.run_with_args(['--version'])
+
+    def test_misc(self):
+        self.create_test_repo()
+        self.run_with_args(['--reference', dt.mirror_dir])
+        self.assertTrue(isfile(dt.reference_path))
+        self.create_test_repo('win-32')
+        self.run_with_args(['--show', dt.mirror_dir])
+        self.run_with_args(['--create', '--verbose', dt.mirror_dir])
+        self.run_with_args(['--verify', dt.mirror_dir])
 
 
 if __name__ == '__main__':
