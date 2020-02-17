@@ -24,8 +24,9 @@ class DiffTarTests(unittest.TestCase):
     def test_md5_file(self):
         tmpfile = join(self.tmpdir, 'testfile')
         with open(tmpfile, 'wb') as fo:
-            fo.write(b'')
-        self.assertEqual(dt.md5_file(tmpfile), EMPTY_MD5)
+            fo.write(b'A\n')
+        self.assertEqual(dt.md5_file(tmpfile),
+                         'bf072e9119077b4e76437a93986787ef')
 
     def create_test_repo(self):
         subdir = join(dt.mirror_dir, 'linux-aarch64')
