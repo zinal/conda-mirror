@@ -12,8 +12,8 @@ import tarfile
 from os.path import abspath, isdir, join, relpath
 
 
-mirror_dir = None
-reference_path = './reference.json'
+MIRROR_DIR = None
+REFERENCE_PATH = './reference.json'
 
 
 def md5_file(path):
@@ -33,10 +33,10 @@ def md5_file(path):
 
 def find_repos():
     """
-    Asssuming the global `mirror_dir` is set, iterate all sub-directories
+    Asssuming the global `MIRROR_DIR` is set, iterate all sub-directories
     which contain a repodata.json and repodata.json.bz2 file.
     """
-    for root, unused_dirs, files in os.walk(mirror_dir):
+    for root, unused_dirs, files in os.walk(MIRROR_DIR):
         if 'repodata.json' in files and 'repodata.json.bz2' in files:
             yield root
 
@@ -77,7 +77,7 @@ def write_reference():
     # make sure we have newline at the end
     if not data.endswith('\n'):
         data += '\n'
-    with open(reference_path, 'w') as fo:
+    with open(REFERENCE_PATH, 'w') as fo:
         fo.write(data)
 
 
@@ -86,10 +86,10 @@ def read_reference():
     Read the "reference file" from disk and return its content as a dictionary.
     """
     try:
-        with open(reference_path) as fi:
+        with open(REFERENCE_PATH) as fi:
             return json.load(fi)
     except FileNotFoundError:
-        sys.exit('No such file: %s' % reference_path)
+        sys.exit('No such file: %s' % REFERENCE_PATH)
 
 
 def get_updates():
@@ -105,11 +105,11 @@ def get_updates():
         index1 = d1.get(repo_path, {})
         if index1 != index2:
             for fn in 'repodata.json', 'repodata.json.bz2':
-                yield relpath(join(repo_path, fn), mirror_dir)
+                yield relpath(join(repo_path, fn), MIRROR_DIR)
         for fn, info2 in index2.items():
             info1 = index1.get(fn, {})
             if info1.get('md5') != info2['md5']:
-                yield relpath(join(repo_path, fn), mirror_dir)
+                yield relpath(join(repo_path, fn), MIRROR_DIR)
 
 
 def tar_repo(outfile='update.tar', verbose=False):
@@ -120,7 +120,7 @@ def tar_repo(outfile='update.tar', verbose=False):
     for f in get_updates():
         if verbose:
             print('adding: %s' % f)
-        t.add(join(mirror_dir, f), f)
+        t.add(join(MIRROR_DIR, f), f)
     t.close()
     if verbose:
         print("Wrote: %s" % outfile)
@@ -168,10 +168,10 @@ def main():
     if len(args) != 1:
         p.error('exactly one argument is required, try -h')
 
-    global mirror_dir
-    mirror_dir = abspath(args[0])
-    if not isdir(mirror_dir):
-        sys.exit("No such directory: %r" % mirror_dir)
+    global MIRROR_DIR
+    MIRROR_DIR = abspath(args[0])
+    if not isdir(MIRROR_DIR):
+        sys.exit("No such directory: %r" % MIRROR_DIR)
 
     if opts.create:
         tar_repo(verbose=opts.verbose)
