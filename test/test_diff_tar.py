@@ -28,8 +28,8 @@ class DiffTarTests(unittest.TestCase):
         self.assertEqual(dt.md5_file(tmpfile),
                          'bf072e9119077b4e76437a93986787ef')
 
-    def create_test_repo(self):
-        subdir = join(dt.mirror_dir, 'linux-aarch64')
+    def create_test_repo(self, subdirname='linux-64'):
+        subdir = join(dt.mirror_dir, subdirname)
         os.makedirs(subdir)
         with open(join(subdir, 'repodata.json'), 'w') as fo:
             fo.write(json.dumps({'packages':
@@ -41,13 +41,13 @@ class DiffTarTests(unittest.TestCase):
     def test_find_repos(self):
         self.create_test_repo()
         self.assertEqual(list(dt.find_repos()),
-                         [join(dt.mirror_dir, 'linux-aarch64')])
+                         [join(dt.mirror_dir, 'linux-64')])
 
     def test_all_repodata_repos(self):
         self.create_test_repo()
         d = dt.all_repodata()
         self.assertEqual(
-            d[join(dt.mirror_dir, 'linux-aarch64')]['a-1.0-0.tar.bz2']['md5'],
+            d[join(dt.mirror_dir, 'linux-64')]['a-1.0-0.tar.bz2']['md5'],
             EMPTY_MD5)
 
     def test_verify_all_repos(self):
@@ -59,13 +59,19 @@ class DiffTarTests(unittest.TestCase):
         dt.write_reference()
         ref = dt.read_reference()
         self.assertEqual(
-            ref[join(dt.mirror_dir, 'linux-aarch64')]['a-1.0-0.tar.bz2']['md5'],
+            ref[join(dt.mirror_dir, 'linux-64')]['a-1.0-0.tar.bz2']['md5'],
             EMPTY_MD5)
 
     def test_get_updates(self):
         self.create_test_repo()
         dt.write_reference()
         self.assertEqual(list(dt.get_updates()), [])
+
+        self.create_test_repo('win-32')
+        lst = sorted(dt.get_updates())
+        self.assertEqual(lst, ['win-32/a-1.0-0.tar.bz2',
+                               'win-32/repodata.json',
+                               'win-32/repodata.json.bz2'])
 
     def test_tar_repo(self):
         self.create_test_repo()
