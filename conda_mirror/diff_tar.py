@@ -127,66 +127,71 @@ def tar_repo(outfile='update.tar', verbose=False):
 
 
 def main():
-    from optparse import OptionParser
+    import argparse
 
-    p = OptionParser(usage="usage: %prog [options] MIRROR_DIRECTORY",
-                     description='create "differential" tarballs of a conda '
-                                 'mirror repository')
+    p = argparse.ArgumentParser(
+        description='create "differential" tarballs of a conda repository')
 
-    p.add_option('--create',
-                 action="store_true",
-                 help="create a differential tarball")
+    p.add_argument('repo_dir',
+                   nargs='?',
+                   action="store",
+                   metavar='REPOSITORY',
+                   help="path to repository directory")
 
-    p.add_option('--reference',
-                 action="store_true",
-                 help="create a reference point file and exit")
+    p.add_argument('--create',
+                   action="store_true",
+                   help="create differential tarball")
 
-    p.add_option('--show',
-                 action="store_true",
-                 help="show the files in respect to the latest reference "
-                      "point file (which would be included in the "
-                      "differential tarball) and exit")
+    p.add_argument('--reference',
+                   action="store_true",
+                   help="create a reference point file")
 
-    p.add_option('--verify',
-                 action="store_true",
-                 help="verify the mirror repository and exit")
+    p.add_argument('--show',
+                   action="store_true",
+                   help="show the files in respect to the latest reference "
+                        "point file (which would be included in the "
+                        "differential tarball)")
 
-    p.add_option('-v', '--verbose',
-                 action="store_true")
+    p.add_argument('--verify',
+                   action="store_true",
+                   help="verify the mirror repository and exit")
 
-    p.add_option('--version',
-                 action="store_true",
-                 help="print version and exit")
+    p.add_argument('-v', '--verbose',
+                   action="store_true")
 
-    opts, args = p.parse_args()
+    p.add_argument('--version',
+                   action="store_true",
+                   help="print version and exit")
 
-    if opts.version:
+    args = p.parse_args()
+
+    if args.version:
         from conda_mirror import __version__
         print('conda-mirror: %s' % __version__)
         return
 
-    if len(args) != 1:
-        p.error('exactly one argument is required, try -h')
+    if not args.repo_dir:
+        p.error('exactly one REPOSITORY is required, try -h')
 
     global MIRROR_DIR
-    MIRROR_DIR = abspath(args[0])
+    MIRROR_DIR = abspath(args.repo_dir)
     if not isdir(MIRROR_DIR):
         sys.exit("No such directory: %r" % MIRROR_DIR)
 
-    if opts.create:
-        tar_repo(verbose=opts.verbose)
+    if args.create:
+        tar_repo(verbose=args.verbose)
         return
 
-    if opts.verify:
+    if args.verify:
         verify_all_repos()
         return
 
-    if opts.show:
+    if args.show:
         for path in get_updates():
             print(path)
         return
 
-    if opts.reference:
+    if args.reference:
         write_reference()
         return
 
