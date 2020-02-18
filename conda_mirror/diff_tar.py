@@ -85,11 +85,8 @@ def read_reference():
     """
     Read the "reference file" from disk and return its content as a dictionary.
     """
-    try:
-        with open(REFERENCE_PATH) as fi:
-            return json.load(fi)
-    except FileNotFoundError:
-        sys.exit('No such file: %s' % REFERENCE_PATH)
+    with open(REFERENCE_PATH) as fi:
+        return json.load(fi)
 
 
 def get_updates():
@@ -99,7 +96,10 @@ def get_updates():
     repository.  That is, the files which need to go into the differential
     tarball.
     """
-    d1 = read_reference()
+    try:
+        d1 = read_reference()
+    except FileNotFoundError:
+        no_reference()
     d2 = all_repodata()
     for repo_path, index2 in d2.items():
         index1 = d1.get(repo_path, {})
@@ -124,6 +124,13 @@ def tar_repo(outfile='update.tar', verbose=False):
     t.close()
     if verbose:
         print("Wrote: %s" % outfile)
+
+
+def no_reference():
+    sys.exit("""
+Error: no such file: %s
+Please use the --reference option before creating a differential tarball.
+    """ % REFERENCE_PATH)
 
 
 def main():
