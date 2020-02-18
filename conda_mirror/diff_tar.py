@@ -187,22 +187,19 @@ def main():
 
     if args.create:
         tar_repo(verbose=args.verbose)
-        return
 
-    if args.verify:
+    elif args.verify:
         verify_all_repos()
-        return
 
-    if args.show:
+    elif args.show:
         for path in get_updates():
             print(path)
-        return
 
-    if args.reference:
+    elif args.reference:
         write_reference()
-        return
 
-    print("Nothing done.")
+    else:
+        print("Nothing done.")
 
 
 if __name__ == '__main__':
