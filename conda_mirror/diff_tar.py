@@ -12,7 +12,6 @@ import tarfile
 from os.path import abspath, isdir, join, relpath
 
 
-MIRROR_DIR = None
 REFERENCE_PATH = './reference.json'
 
 
@@ -31,35 +30,36 @@ def md5_file(path):
     return h.hexdigest()
 
 
-def find_repos():
+def find_repos(mirror_dir):
     """
-    Asssuming the global `MIRROR_DIR` is set, iterate all sub-directories
+    Given the path to a directory, iterate all sub-directories
     which contain a repodata.json and repodata.json.bz2 file.
     """
-    for root, unused_dirs, files in os.walk(MIRROR_DIR):
+    for root, unused_dirs, files in os.walk(mirror_dir):
         if 'repodata.json' in files and 'repodata.json.bz2' in files:
             yield root
 
 
-def all_repodata():
+def all_repodata(mirror_dir):
     """
-    Return a dictionary mapping all repository sub-directories to the conda
-    package list as respresented by the 'packages' field in repodata.json.
+    Given the path to a directory, return a dictionary mapping all repository
+    sub-directories to the conda package list as respresented by
+    the 'packages' field in repodata.json.
     """
     d = {}
-    for repo_path in find_repos():
+    for repo_path in find_repos(mirror_dir):
         with open(join(repo_path, 'repodata.json')) as fi:
             index = json.load(fi)['packages']
         d[repo_path] = index
     return d
 
 
-def verify_all_repos():
+def verify_all_repos(mirror_dir):
     """
     Verify all the MD5 sum of all conda packages listed in all repodata.json
     files in the repository.
     """
-    d = all_repodata()
+    d = all_repodata(mirror_dir)
     for repo_path, index in d.items():
         for fn, info in index.items():
             path = join(repo_path, fn)
@@ -68,12 +68,12 @@ def verify_all_repos():
             print('MD5 mismatch: %s' % path)
 
 
-def write_reference():
+def write_reference(mirror_dir):
     """
     Write the "reference file", which is a collection of the content of all
     repodata.json files.
     """
-    data = json.dumps(all_repodata(), indent=2, sort_keys=True)
+    data = json.dumps(all_repodata(mirror_dir), indent=2, sort_keys=True)
     # make sure we have newline at the end
     if not data.endswith('\n'):
         data += '\n'
@@ -95,7 +95,7 @@ Please use the --reference option before creating a differential tarball.
 """ % REFERENCE_PATH)
 
 
-def get_updates():
+def get_updates(mirror_dir):
     """
     Compare the "reference file" to the actual the repository (all the
     repodata.json files) and iterate the new and updates files in the
@@ -103,27 +103,27 @@ def get_updates():
     tarball.
     """
     d1 = read_reference()
-    d2 = all_repodata()
+    d2 = all_repodata(mirror_dir)
     for repo_path, index2 in d2.items():
         index1 = d1.get(repo_path, {})
         if index1 != index2:
             for fn in 'repodata.json', 'repodata.json.bz2':
-                yield relpath(join(repo_path, fn), MIRROR_DIR)
+                yield relpath(join(repo_path, fn), mirror_dir)
         for fn, info2 in index2.items():
             info1 = index1.get(fn, {})
             if info1.get('md5') != info2['md5']:
-                yield relpath(join(repo_path, fn), MIRROR_DIR)
+                yield relpath(join(repo_path, fn), mirror_dir)
 
 
-def tar_repo(outfile='update.tar', verbose=False):
+def tar_repo(mirror_dir, outfile='update.tar', verbose=False):
     """
     Write the so-called differential tarball, see get_updates().
     """
     t = tarfile.open(outfile, 'w')
-    for f in get_updates():
+    for f in get_updates(mirror_dir):
         if verbose:
             print('adding: %s' % f)
-        t.add(join(MIRROR_DIR, f), f)
+        t.add(join(mirror_dir, f), f)
     t.close()
     if verbose:
         print("Wrote: %s" % outfile)
@@ -176,23 +176,22 @@ def main():
     if not args.repo_dir:
         p.error('exactly one REPOSITORY is required, try -h')
 
-    global MIRROR_DIR
-    MIRROR_DIR = abspath(args.repo_dir)
-    if not isdir(MIRROR_DIR):
-        sys.exit("No such directory: %r" % MIRROR_DIR)
+    mirror_dir = abspath(args.repo_dir)
+    if not isdir(mirror_dir):
+        sys.exit("No such directory: %r" % mirror_dir)
 
     if args.create:
-        tar_repo(verbose=args.verbose)
+        tar_repo(mirror_dir, verbose=args.verbose)
 
     elif args.verify:
-        verify_all_repos()
+        verify_all_repos(mirror_dir)
 
     elif args.show:
-        for path in get_updates():
+        for path in get_updates(mirror_dir):
             print(path)
 
     elif args.reference:
-        write_reference()
+        write_reference(mirror_dir)
 
     else:
         print("Nothing done.")
