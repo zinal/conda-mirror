@@ -18,7 +18,7 @@ setup(
     description='Mirror an upstream conda channel to a local directory',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/valassis-digital-media/conda-mirror',
+    url='https://github.com/regro/conda-mirror',
     platforms=['Linux', 'Mac OSX', 'Windows'],
     license='BSD 3-Clause',
     install_requires=[
