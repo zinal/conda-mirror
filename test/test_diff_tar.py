@@ -58,6 +58,12 @@ def test_verify_all_repos(tmpdir):
     dt.verify_all_repos(dt.mirror_dir)
 
 
+def test_read_no_reference(tmpdir):
+    # tmpdir is empty - join(tmpdir, 'reference.json') does not exist
+    with pytest.raises(dt.NoReferenceError):
+        dt.read_reference()
+
+
 def test_write_and_read_reference(tmpdir):
     create_test_repo()
     dt.write_reference(join(tmpdir, 'repo'))

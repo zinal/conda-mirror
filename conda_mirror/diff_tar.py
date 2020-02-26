@@ -15,6 +15,10 @@ from os.path import abspath, isdir, join, relpath
 REFERENCE_PATH = './reference.json'
 
 
+class NoReferenceError(FileNotFoundError):
+    pass
+
+
 def md5_file(path):
     """
     Return the MD5 hashsum of the file given by `path` in hexadecimal
@@ -88,11 +92,8 @@ def read_reference():
     try:
         with open(REFERENCE_PATH) as fi:
             return json.load(fi)
-    except FileNotFoundError:
-        sys.exit("""\
-Error: no such file: %s
-Please use the --reference option before creating a differential tarball.
-""" % REFERENCE_PATH)
+    except FileNotFoundError as e:
+        raise NoReferenceError(e)
 
 
 def get_updates(mirror_dir):
@@ -180,21 +181,28 @@ def main():
     if not isdir(mirror_dir):
         sys.exit("No such directory: %r" % mirror_dir)
 
-    if args.create:
-        tar_repo(mirror_dir, verbose=args.verbose)
+    try:
+        if args.create:
+            tar_repo(mirror_dir, verbose=args.verbose)
 
-    elif args.verify:
-        verify_all_repos(mirror_dir)
+        elif args.verify:
+            verify_all_repos(mirror_dir)
 
-    elif args.show:
-        for path in get_updates(mirror_dir):
-            print(path)
+        elif args.show:
+            for path in get_updates(mirror_dir):
+                print(path)
 
-    elif args.reference:
-        write_reference(mirror_dir)
+        elif args.reference:
+            write_reference(mirror_dir)
 
-    else:
-        print("Nothing done.")
+        else:
+            print("Nothing done.")
+
+    except NoReferenceError:
+        sys.exit("""\
+Error: no such file: %s
+Please use the --reference option before creating a differential tarball.\
+""" % REFERENCE_PATH)
 
 
 if __name__ == '__main__':
