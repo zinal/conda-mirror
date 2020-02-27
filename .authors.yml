@@ -52,7 +52,9 @@
   num_commits: 4
   first_commit: 2017-02-11 09:48:24
 - name: John Kirkham
-  email: kirkhamj@janelia.hhmi.org
+  email: jakirkham@gmail.com
+  alternate_emails:
+  - kirkhamj@janelia.hhmi.org
   num_commits: 4
   first_commit: 2017-02-28 15:31:24
   github: jakirkham
