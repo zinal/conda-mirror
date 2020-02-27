@@ -1,6 +1,6 @@
 - name: Anthony Scopatz
   email: scopatz@gmail.com
-  num_commits: 7
+  num_commits: 13
   first_commit: 2019-05-30 10:22:56
 - name: Diogo Pereira
   email: sir.suriv@gmail.com
@@ -55,7 +55,7 @@
   email: jakirkham@gmail.com
   alternate_emails:
   - kirkhamj@janelia.hhmi.org
-  num_commits: 4
+  num_commits: 6
   first_commit: 2017-02-28 15:31:24
   github: jakirkham
 - name: Johannes Haberl
@@ -78,3 +78,12 @@
   is_org: true
   num_commits: 0
   first_commit: 2019-10-22 14:25:24.612939
+- name: Ilan Schnell
+  email: ilanschnell@gmail.com
+  num_commits: 20
+  first_commit: 2020-02-16 22:41:42
+  github: ilanschnell
+- name: Uwe L. Korn
+  email: xhochy@users.noreply.github.com
+  num_commits: 2
+  first_commit: 2019-10-24 14:33:35
