@@ -2,6 +2,22 @@
 
 <!-- current developments -->
 
+## [0.8.2](https://github.com/regro/conda-mirror/tree/0.8.2) (2020-02-27)
+
+**Implemented enhancements:**
+
+* New conda-diff-tar command, a tools which allows creating
+  differential tarballs of a (usually mirrored) conda repository.
+
+**Contributors:**
+
+* Ilan Schnell
+* Anthony Scopatz
+* John Kirkham
+* Uwe L. Korn
+
+
+
 ## [0.8.1](https://github.com/regro/conda-mirror/tree/0.8.1) (2019-20-22)
 
 **Implemented enhancements:**
