@@ -14,7 +14,8 @@ script:
 - coverage run --concurrency=multiprocessing run_tests.py
 - coverage combine
 - coverage report -m
-- flake8
+- make format-check
+- make lint
 
 after_success:
 - codecov

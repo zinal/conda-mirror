@@ -23,5 +23,14 @@ release: sdist ## Make a pypi release
 sdist: clean ## Make a source distribution
 	python setup.py sdist
 
-test: ## Make a test run
+format-check: ## Check to make sure format is correct
+	black --check .
+
+format: ## Use black to format the python source code
+	black .
+
+lint: ## Check syntax with flake8
+	flake8
+
+test: lint ## Make a test run
 	python run_tests.py -vxrs test/
