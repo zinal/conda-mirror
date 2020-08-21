@@ -68,6 +68,13 @@ def test_write_and_read_reference(tmpdir):
     assert ref[join(dt.mirror_dir, "linux-64")]["a-1.0-0.tar.bz2"]["md5"] == EMPTY_MD5
 
 
+def test_write_and_read_reference_with_target(tmpdir):
+    create_test_repo()
+    dt.write_reference(join(tmpdir, "repo"), join(tmpdir, "reference2.json"))
+    ref = dt.read_reference(join(tmpdir, "reference2.json"))
+    assert ref[join(dt.mirror_dir, "linux-64")]["a-1.0-0.tar.bz2"]["md5"] == EMPTY_MD5
+
+
 def test_get_updates(tmpdir):
     create_test_repo()
     dt.write_reference(join(tmpdir, "repo"))
@@ -82,12 +89,35 @@ def test_get_updates(tmpdir):
     ]
 
 
+def test_get_updates_with_target(tmpdir):
+    create_test_repo()
+    dt.write_reference(join(tmpdir, "repo"), join(tmpdir, "reference2.json"))
+    assert list(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference2.json"))) == []
+
+    create_test_repo("win-32")
+    lst = sorted(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference2.json")))
+    assert lst == [
+        "win-32/a-1.0-0.tar.bz2",
+        "win-32/repodata.json",
+        "win-32/repodata.json.bz2",
+    ]
+
+
 def test_tar_repo(tmpdir):
     create_test_repo()
     tarball = join(tmpdir, "up.tar")
     dt.write_reference(dt.mirror_dir)
     create_test_repo("win-32")
     dt.tar_repo(dt.mirror_dir, tarball)
+    assert isfile(tarball)
+
+
+def test_tar_repo_with_target(tmpdir):
+    create_test_repo()
+    tarball = join(tmpdir, "up.tar")
+    dt.write_reference(dt.mirror_dir, join(tmpdir, "reference2.json"))
+    create_test_repo("win-32")
+    dt.tar_repo(dt.mirror_dir, join(tmpdir, "reference2.json"), tarball)
     assert isfile(tarball)
 
 
