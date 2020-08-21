@@ -179,7 +179,7 @@ def main():
         "-i",
         "--infile",
         action="store",
-        help="Path to specify references json file when using --create"
+        help="Path to specify references json file when using --create or --show"
     )
 
     p.add_argument(
