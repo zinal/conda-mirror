@@ -377,6 +377,7 @@ def _remove_package(pkg_path, reason):
         logger.warning(msg)
     else:
         # Logging breaks in multiprocessing in Windows
+        # TODO: Fix this properly with a logging Queue
         sys.stdout.write("Warning: " + msg)
     os.remove(pkg_path)
     return pkg_path, msg
@@ -665,6 +666,7 @@ def _validate_or_remove_package(args):
             logger.warning(log_msg)
         else:
             # Windows does not handle multiprocessing logging well
+            # TODO: Fix this properly with a logging Queue
             sys.stdout.write("Warning: " + log_msg)
         reason = "Package is not in the repodata index"
         package_path = os.path.join(package_directory, package)
@@ -676,6 +678,7 @@ def _validate_or_remove_package(args):
         logger.info(log_msg)
     else:
         # Windows does not handle multiprocessing logging well
+        # TODO: Fix this properly with a logging Queue
         sys.stdout.write("Info: "+log_msg)
     package_path = os.path.join(package_directory, package)
     return _validate(
