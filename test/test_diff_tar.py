@@ -4,6 +4,7 @@ import json
 import shutil
 import tempfile
 from os.path import isfile, join
+import pathlib
 
 import pytest
 
@@ -81,11 +82,13 @@ def test_get_updates(tmpdir):
     assert list(dt.get_updates(dt.mirror_dir)) == []
 
     create_test_repo("win-32")
-    lst = sorted(dt.get_updates(dt.mirror_dir))
+    lst = sorted(
+        pathlib.Path(f) for f in dt.get_updates(dt.mirror_dir)
+    )
     assert lst == [
-        "win-32/a-1.0-0.tar.bz2",
-        "win-32/repodata.json",
-        "win-32/repodata.json.bz2",
+        pathlib.Path("win-32/a-1.0-0.tar.bz2"),
+        pathlib.Path("win-32/repodata.json"),
+        pathlib.Path("win-32/repodata.json.bz2"),
     ]
 
 
@@ -95,11 +98,14 @@ def test_get_updates_with_target(tmpdir):
     assert list(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference2.json"))) == []
 
     create_test_repo("win-32")
-    lst = sorted(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference2.json")))
+    lst = sorted(
+        pathlib.Path(f)
+        for f in dt.get_updates(dt.mirror_dir, join(tmpdir, "reference_target.json"))
+    )
     assert lst == [
-        "win-32/a-1.0-0.tar.bz2",
-        "win-32/repodata.json",
-        "win-32/repodata.json.bz2",
+        pathlib.Path("win-32/a-1.0-0.tar.bz2"),
+        pathlib.Path("win-32/repodata.json"),
+        pathlib.Path("win-32/repodata.json.bz2"),
     ]
 
 
