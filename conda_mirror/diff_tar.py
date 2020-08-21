@@ -231,7 +231,15 @@ def main():
             verify_all_repos(mirror_dir)
 
         elif args.show:
-            for path in get_updates(mirror_dir):
+            if args.infile:
+                infile = args.infile
+            else:
+                infile = DEFAULT_REFERENCE_PATH
+
+            if args.outfile:
+                p.error("--outfile not allowed with --show")
+
+            for path in get_updates(mirror_dir, infile):
                 print(path)
 
         elif args.reference:
