@@ -286,7 +286,7 @@ def _parse_and_format_args():
     if args.config:
         logger.info("Loading config from %s", args.config)
         with open(args.config, "r") as f:
-            config_dict = yaml.load(f)
+            config_dict = yaml.safe_load(f)
         logger.info("config: %s", config_dict)
 
         # use values from config file unless explicitly given on command line
