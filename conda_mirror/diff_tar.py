@@ -73,11 +73,13 @@ def verify_all_repos(mirror_dir):
             print("MD5 mismatch: %s" % path)
 
 
-def write_reference(mirror_dir, outfile=DEFAULT_REFERENCE_PATH):
+def write_reference(mirror_dir, outfile=None):
     """
     Write the "reference file", which is a collection of the content of all
     repodata.json files.
     """
+    if not outfile:
+        outfile = DEFAULT_REFERENCE_PATH
     data = json.dumps(all_repodata(mirror_dir), indent=2, sort_keys=True)
     # make sure we have newline at the end
     if not data.endswith("\n"):
@@ -86,10 +88,12 @@ def write_reference(mirror_dir, outfile=DEFAULT_REFERENCE_PATH):
         fo.write(data)
 
 
-def read_reference(infile=DEFAULT_REFERENCE_PATH):
+def read_reference(infile=None):
     """
     Read the "reference file" from disk and return its content as a dictionary.
     """
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
     try:
         with open(infile) as fi:
             return json.load(fi)
@@ -97,13 +101,15 @@ def read_reference(infile=DEFAULT_REFERENCE_PATH):
         raise NoReferenceError(e)
 
 
-def get_updates(mirror_dir, infile=DEFAULT_REFERENCE_PATH):
+def get_updates(mirror_dir, infile=None):
     """
     Compare the "reference file" to the actual the repository (all the
     repodata.json files) and iterate the new and updates files in the
     repository.  That is, the files which need to go into the differential
     tarball.
     """
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
     d1 = read_reference(infile)
     d2 = all_repodata(mirror_dir)
     for repo_path, index2 in d2.items():
@@ -119,13 +125,17 @@ def get_updates(mirror_dir, infile=DEFAULT_REFERENCE_PATH):
 
 def tar_repo(
     mirror_dir,
-    infile=DEFAULT_REFERENCE_PATH,
-    outfile=DEFAULT_UPDATE_PATH,
+    infile=None,
+    outfile=None,
     verbose=False
 ):
     """
     Write the so-called differential tarball, see get_updates().
     """
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
+    if not outfile:
+        outfile = DEFAULT_UPDATE_PATH
     t = tarfile.open(outfile, "w")
     for f in get_updates(mirror_dir, infile):
         if verbose:
