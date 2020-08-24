@@ -139,10 +139,55 @@ def test_version():
     run_with_args(["--version"])
 
 
-def test_misc(tmpdir):
+def test_cli_reference(tmpdir):
     create_test_repo()
     run_with_args(["--reference", dt.mirror_dir])
     assert isfile(dt.DEFAULT_REFERENCE_PATH)
+
+
+def test_cli_reference_outfile(tmpdir):
+    target_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
+    assert isfile(dt.DEFAULT_REFERENCE_PATH)
+    run_with_args(["--reference", "--outfile", target_path, dt.mirror_dir])
+    assert isfile(target_path)
+    with open(dt.DEFAULT_REFERENCE_PATH, 'r') as ref1:
+        with open(target_path, 'r') as ref2:
+            assert ref1.readlines() == ref2.readlines()
+
+
+def test_cli_create_outfile(tmpdir):
+    target_path = join(tmpdir, "tar_target.tar")
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
+    run_with_args(["--create", "--outfile", target_path, dt.mirror_dir])
+    assert isfile(target_path)
+
+
+def test_cli_create_infile(tmpdir):
+    target_ref_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", "--outfile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_ref_path)
+    run_with_args(["--create", "--infile", target_ref_path, dt.mirror_dir])
+    assert isfile(dt.DEFAULT_UPDATE_PATH)
+
+
+def test_cli_create_infile_outfile(tmpdir):
+    target_tar_path = join(tmpdir, "tar_target.tar")
+    target_ref_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", "--outfile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_ref_path)
+    run_with_args(["--create", "--outfile", target_tar_path,
+                   "--infile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_tar_path)
+
+
+def test_misc(tmpdir):
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
     create_test_repo("win-32")
     run_with_args(["--show", dt.mirror_dir])
     run_with_args(["--create", "--verbose", dt.mirror_dir])
