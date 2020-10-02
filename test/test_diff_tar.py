@@ -4,6 +4,7 @@ import json
 import shutil
 import tempfile
 from os.path import isfile, join
+import pathlib
 
 import pytest
 
@@ -17,7 +18,8 @@ EMPTY_MD5 = "d41d8cd98f00b204e9800998ecf8427e"
 def tmpdir():
     tmpdir = tempfile.mkdtemp()
     dt.mirror_dir = join(tmpdir, "repo")
-    dt.REFERENCE_PATH = join(tmpdir, "reference.json")
+    dt.DEFAULT_REFERENCE_PATH = join(tmpdir, "reference.json")
+    dt.DEFAULT_UPDATE_PATH = join(tmpdir, "updates.tar")
     yield tmpdir
     shutil.rmtree(tmpdir)
 
@@ -68,26 +70,61 @@ def test_write_and_read_reference(tmpdir):
     assert ref[join(dt.mirror_dir, "linux-64")]["a-1.0-0.tar.bz2"]["md5"] == EMPTY_MD5
 
 
+def test_write_and_read_reference_with_target(tmpdir):
+    create_test_repo()
+    dt.write_reference(join(tmpdir, "repo"), join(tmpdir, "reference_target.json"))
+    ref = dt.read_reference(join(tmpdir, "reference_target.json"))
+    assert ref[join(dt.mirror_dir, "linux-64")]["a-1.0-0.tar.bz2"]["md5"] == EMPTY_MD5
+
+
 def test_get_updates(tmpdir):
     create_test_repo()
     dt.write_reference(join(tmpdir, "repo"))
     assert list(dt.get_updates(dt.mirror_dir)) == []
 
     create_test_repo("win-32")
-    lst = sorted(dt.get_updates(dt.mirror_dir))
+    lst = sorted(
+        pathlib.Path(f) for f in dt.get_updates(dt.mirror_dir)
+    )
     assert lst == [
-        "win-32/a-1.0-0.tar.bz2",
-        "win-32/repodata.json",
-        "win-32/repodata.json.bz2",
+        pathlib.Path("win-32/a-1.0-0.tar.bz2"),
+        pathlib.Path("win-32/repodata.json"),
+        pathlib.Path("win-32/repodata.json.bz2"),
+    ]
+
+
+def test_get_updates_with_target(tmpdir):
+    create_test_repo()
+    dt.write_reference(join(tmpdir, "repo"), join(tmpdir, "reference_target.json"))
+    assert list(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference_target.json"))) == []
+
+    create_test_repo("win-32")
+    lst = sorted(
+        pathlib.Path(f)
+        for f in dt.get_updates(dt.mirror_dir, join(tmpdir, "reference_target.json"))
+    )
+    assert lst == [
+        pathlib.Path("win-32/a-1.0-0.tar.bz2"),
+        pathlib.Path("win-32/repodata.json"),
+        pathlib.Path("win-32/repodata.json.bz2"),
     ]
 
 
 def test_tar_repo(tmpdir):
     create_test_repo()
-    tarball = join(tmpdir, "up.tar")
     dt.write_reference(dt.mirror_dir)
     create_test_repo("win-32")
-    dt.tar_repo(dt.mirror_dir, tarball)
+    dt.tar_repo(dt.mirror_dir)
+    assert isfile(dt.DEFAULT_UPDATE_PATH)
+
+
+def test_tar_repo_with_target(tmpdir):
+    create_test_repo()
+    tarball = join(tmpdir, "updates_target.tar")
+    reference = join(tmpdir, "reference_target.json")
+    dt.write_reference(dt.mirror_dir, reference)
+    create_test_repo("win-32")
+    dt.tar_repo(dt.mirror_dir, reference, tarball)
     assert isfile(tarball)
 
 
@@ -102,10 +139,55 @@ def test_version():
     run_with_args(["--version"])
 
 
+def test_cli_reference(tmpdir):
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
+    assert isfile(dt.DEFAULT_REFERENCE_PATH)
+
+
+def test_cli_reference_outfile(tmpdir):
+    target_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
+    assert isfile(dt.DEFAULT_REFERENCE_PATH)
+    run_with_args(["--reference", "--outfile", target_path, dt.mirror_dir])
+    assert isfile(target_path)
+    with open(dt.DEFAULT_REFERENCE_PATH, 'r') as ref1:
+        with open(target_path, 'r') as ref2:
+            assert ref1.readlines() == ref2.readlines()
+
+
+def test_cli_create_outfile(tmpdir):
+    target_path = join(tmpdir, "tar_target.tar")
+    create_test_repo()
+    run_with_args(["--reference", dt.mirror_dir])
+    run_with_args(["--create", "--outfile", target_path, dt.mirror_dir])
+    assert isfile(target_path)
+
+
+def test_cli_create_infile(tmpdir):
+    target_ref_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", "--outfile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_ref_path)
+    run_with_args(["--create", "--infile", target_ref_path, dt.mirror_dir])
+    assert isfile(dt.DEFAULT_UPDATE_PATH)
+
+
+def test_cli_create_infile_outfile(tmpdir):
+    target_tar_path = join(tmpdir, "tar_target.tar")
+    target_ref_path = join(tmpdir, "ref_target.json")
+    create_test_repo()
+    run_with_args(["--reference", "--outfile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_ref_path)
+    run_with_args(["--create", "--outfile", target_tar_path,
+                   "--infile", target_ref_path, dt.mirror_dir])
+    assert isfile(target_tar_path)
+
+
 def test_misc(tmpdir):
     create_test_repo()
     run_with_args(["--reference", dt.mirror_dir])
-    assert isfile(dt.REFERENCE_PATH)
     create_test_repo("win-32")
     run_with_args(["--show", dt.mirror_dir])
     run_with_args(["--create", "--verbose", dt.mirror_dir])

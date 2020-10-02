@@ -12,7 +12,8 @@ import tarfile
 from os.path import abspath, isdir, join, relpath
 
 
-REFERENCE_PATH = "./reference.json"
+DEFAULT_REFERENCE_PATH = "./reference.json"
+DEFAULT_UPDATE_PATH = "./update.tar"
 
 
 class NoReferenceError(FileNotFoundError):
@@ -72,38 +73,44 @@ def verify_all_repos(mirror_dir):
             print("MD5 mismatch: %s" % path)
 
 
-def write_reference(mirror_dir):
+def write_reference(mirror_dir, outfile=None):
     """
     Write the "reference file", which is a collection of the content of all
     repodata.json files.
     """
+    if not outfile:
+        outfile = DEFAULT_REFERENCE_PATH
     data = json.dumps(all_repodata(mirror_dir), indent=2, sort_keys=True)
     # make sure we have newline at the end
     if not data.endswith("\n"):
         data += "\n"
-    with open(REFERENCE_PATH, "w") as fo:
+    with open(outfile, "w") as fo:
         fo.write(data)
 
 
-def read_reference():
+def read_reference(infile=None):
     """
     Read the "reference file" from disk and return its content as a dictionary.
     """
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
     try:
-        with open(REFERENCE_PATH) as fi:
+        with open(infile) as fi:
             return json.load(fi)
     except FileNotFoundError as e:
         raise NoReferenceError(e)
 
 
-def get_updates(mirror_dir):
+def get_updates(mirror_dir, infile=None):
     """
     Compare the "reference file" to the actual the repository (all the
     repodata.json files) and iterate the new and updates files in the
     repository.  That is, the files which need to go into the differential
     tarball.
     """
-    d1 = read_reference()
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
+    d1 = read_reference(infile)
     d2 = all_repodata(mirror_dir)
     for repo_path, index2 in d2.items():
         index1 = d1.get(repo_path, {})
@@ -116,12 +123,21 @@ def get_updates(mirror_dir):
                 yield relpath(join(repo_path, fn), mirror_dir)
 
 
-def tar_repo(mirror_dir, outfile="update.tar", verbose=False):
+def tar_repo(
+    mirror_dir,
+    infile=None,
+    outfile=None,
+    verbose=False
+):
     """
     Write the so-called differential tarball, see get_updates().
     """
+    if not infile:
+        infile = DEFAULT_REFERENCE_PATH
+    if not outfile:
+        outfile = DEFAULT_UPDATE_PATH
     t = tarfile.open(outfile, "w")
-    for f in get_updates(mirror_dir):
+    for f in get_updates(mirror_dir, infile):
         if verbose:
             print("adding: %s" % f)
         t.add(join(mirror_dir, f), f)
@@ -149,6 +165,21 @@ def main():
 
     p.add_argument(
         "--reference", action="store_true", help="create a reference point file"
+    )
+
+    p.add_argument(
+        "-o",
+        "--outfile",
+        action="store",
+        help="Path to references json file when using --reference, "
+        "or update tarfile when using --create",
+    )
+
+    p.add_argument(
+        "-i",
+        "--infile",
+        action="store",
+        help="Path to specify references json file when using --create or --show"
     )
 
     p.add_argument(
@@ -184,17 +215,42 @@ def main():
 
     try:
         if args.create:
-            tar_repo(mirror_dir, verbose=args.verbose)
+            if args.outfile:
+                outfile = args.outfile
+            else:
+                outfile = DEFAULT_UPDATE_PATH
+
+            if args.infile:
+                infile = args.infile
+            else:
+                infile = DEFAULT_REFERENCE_PATH
+
+            tar_repo(mirror_dir, infile, outfile, verbose=args.verbose)
 
         elif args.verify:
             verify_all_repos(mirror_dir)
 
         elif args.show:
-            for path in get_updates(mirror_dir):
+            if args.infile:
+                infile = args.infile
+            else:
+                infile = DEFAULT_REFERENCE_PATH
+
+            if args.outfile:
+                p.error("--outfile not allowed with --show")
+
+            for path in get_updates(mirror_dir, infile):
                 print(path)
 
         elif args.reference:
-            write_reference(mirror_dir)
+            if args.infile:
+                p.error("--infile not allowed with --reference")
+            if args.outfile:
+                outfile = args.outfile
+            else:
+                outfile = DEFAULT_REFERENCE_PATH
+
+            write_reference(mirror_dir, outfile)
 
         else:
             print("Nothing done.")
@@ -205,7 +261,7 @@ def main():
 Error: no such file: %s
 Please use the --reference option before creating a differential tarball.\
 """
-            % REFERENCE_PATH
+            % DEFAULT_REFERENCE_PATH
         )
 
 

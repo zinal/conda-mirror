@@ -373,7 +373,12 @@ def _remove_package(pkg_path, reason):
         The reason why the package is being removed
     """
     msg = "Removing: %s. Reason: %s" % (pkg_path, reason)
-    logger.warning(msg)
+    if logger:
+        logger.warning(msg)
+    else:
+        # Logging breaks in multiprocessing in Windows
+        # TODO: Fix this properly with a logging Queue
+        sys.stdout.write("Warning: " + msg)
     os.remove(pkg_path)
     return pkg_path, msg
 
@@ -656,13 +661,25 @@ def _validate_or_remove_package(args):
     try:
         package_metadata = package_repodata[package]
     except KeyError:
-        logger.warning("%s is not in the upstream index. Removing...", package)
+        log_msg = f"{package} is not in the upstream index. Removing..."
+        if logger:
+            logger.warning(log_msg)
+        else:
+            # Windows does not handle multiprocessing logging well
+            # TODO: Fix this properly with a logging Queue
+            sys.stdout.write("Warning: " + log_msg)
         reason = "Package is not in the repodata index"
         package_path = os.path.join(package_directory, package)
         return _remove_package(package_path, reason=reason)
     # validate the integrity of the package, the size of the package and
     # its hashes
-    logger.info("Validating {:4d} of {:4d}: {}.".format(num + 1, num_packages, package))
+    log_msg = "Validating {:4d} of {:4d}: {}.".format(num + 1, num_packages, package)
+    if logger:
+        logger.info(log_msg)
+    else:
+        # Windows does not handle multiprocessing logging well
+        # TODO: Fix this properly with a logging Queue
+        sys.stdout.write("Info: "+log_msg)
     package_path = os.path.join(package_directory, package)
     return _validate(
         package_path, md5=package_metadata.get("md5"), size=package_metadata.get("size")

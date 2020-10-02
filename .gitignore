@@ -42,6 +42,10 @@ cover/
 nosetests.xml
 coverage.xml
 
+# Possible files generated during tests
+reference.json
+update.tar
+
 # Translations
 *.mo
 *.pot
@@ -70,6 +74,9 @@ docs/_build/
 
 #pycharm
 .idea/*
+
+#vscode
+.vscode
 
 #Dolphin browser files
 .directory/
