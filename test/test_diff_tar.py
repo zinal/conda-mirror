@@ -83,9 +83,7 @@ def test_get_updates(tmpdir):
     assert list(dt.get_updates(dt.mirror_dir)) == []
 
     create_test_repo("win-32")
-    lst = sorted(
-        pathlib.Path(f) for f in dt.get_updates(dt.mirror_dir)
-    )
+    lst = sorted(pathlib.Path(f) for f in dt.get_updates(dt.mirror_dir))
     assert lst == [
         pathlib.Path("win-32/a-1.0-0.tar.bz2"),
         pathlib.Path("win-32/repodata.json"),
@@ -96,7 +94,9 @@ def test_get_updates(tmpdir):
 def test_get_updates_with_target(tmpdir):
     create_test_repo()
     dt.write_reference(join(tmpdir, "repo"), join(tmpdir, "reference_target.json"))
-    assert list(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference_target.json"))) == []
+    assert (
+        list(dt.get_updates(dt.mirror_dir, join(tmpdir, "reference_target.json"))) == []
+    )
 
     create_test_repo("win-32")
     lst = sorted(
@@ -152,8 +152,8 @@ def test_cli_reference_outfile(tmpdir):
     assert isfile(dt.DEFAULT_REFERENCE_PATH)
     run_with_args(["--reference", "--outfile", target_path, dt.mirror_dir])
     assert isfile(target_path)
-    with open(dt.DEFAULT_REFERENCE_PATH, 'r') as ref1:
-        with open(target_path, 'r') as ref2:
+    with open(dt.DEFAULT_REFERENCE_PATH, "r") as ref1:
+        with open(target_path, "r") as ref2:
             assert ref1.readlines() == ref2.readlines()
 
 
@@ -180,8 +180,16 @@ def test_cli_create_infile_outfile(tmpdir):
     create_test_repo()
     run_with_args(["--reference", "--outfile", target_ref_path, dt.mirror_dir])
     assert isfile(target_ref_path)
-    run_with_args(["--create", "--outfile", target_tar_path,
-                   "--infile", target_ref_path, dt.mirror_dir])
+    run_with_args(
+        [
+            "--create",
+            "--outfile",
+            target_tar_path,
+            "--infile",
+            target_ref_path,
+            dt.mirror_dir,
+        ]
+    )
     assert isfile(target_tar_path)
 
 

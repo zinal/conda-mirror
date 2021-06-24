@@ -731,7 +731,7 @@ def main(
     minimum_free_space=0,
     proxies=None,
     ssl_verify=None,
-    chunk_size:int=DEFAULT_CHUNK_SIZE,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
     max_retries=100,
 ):
     """

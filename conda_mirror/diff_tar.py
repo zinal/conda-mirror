@@ -123,12 +123,7 @@ def get_updates(mirror_dir, infile=None):
                 yield relpath(join(repo_path, fn), mirror_dir)
 
 
-def tar_repo(
-    mirror_dir,
-    infile=None,
-    outfile=None,
-    verbose=False
-):
+def tar_repo(mirror_dir, infile=None, outfile=None, verbose=False):
     """
     Write the so-called differential tarball, see get_updates().
     """
@@ -179,7 +174,7 @@ def main():
         "-i",
         "--infile",
         action="store",
-        help="Path to specify references json file when using --create or --show"
+        help="Path to specify references json file when using --create or --show",
     )
 
     p.add_argument(
