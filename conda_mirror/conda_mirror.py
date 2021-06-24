@@ -277,9 +277,12 @@ def _make_arg_parser():
     )
     ap.add_argument(
         "--platform",
+        action="append",
+        default=[],
         help=(
             "The OS platform(s) to mirror. one of: {'linux-64', 'linux-32',"
-            "'osx-64', 'win-32', 'win-64'}"
+            "'osx-64', 'win-32', 'win-64'}. "
+            "May be specified multiple times."
         ),
     )
     ap.add_argument(
@@ -978,7 +981,7 @@ def main(
     upstream_channel,
     target_directory,
     temp_directory,
-    platform,
+    platform: Union[str, List[str]],
     blacklist=None,
     whitelist=None,
     include_depends=False,
@@ -1010,8 +1013,8 @@ def main(
         The path on disk to an existing and writable directory to temporarily
         store the packages before moving them to the target_directory to
         apply checks
-    platform : str
-        The platform that you wish to mirror for. Common options are
+    platform : Union[str,List[str]]
+        The platforms that you wish to mirror. Common options are
         'linux-64', 'osx-64', 'win-64' and 'win-32'. Any platform is valid as
         long as the url resolves.
     blacklist : iterable of tuples, optional
@@ -1112,6 +1115,46 @@ def main(
         "blacklisted": set(),
         "to-mirror": set(),
     }
+
+    _platforms = [platform] if isinstance(platform, str) else platform
+
+    for platform in _platforms:
+        _download_platform(
+            summary,
+            upstream_channel,
+            target_directory,
+            temp_directory,
+            platform,
+            blacklist=blacklist,
+            whitelist=whitelist,
+            num_threads=num_threads,
+            dry_run=dry_run,
+            no_validate_target=no_validate_target,
+            minimum_free_space=minimum_free_space,
+            proxies=proxies,
+            ssl_verify=ssl_verify,
+            max_retries=max_retries,
+        )
+
+    return summary
+
+
+def _download_platform(
+    summary,
+    upstream_channel,
+    target_directory,
+    temp_directory,
+    platform: str,
+    blacklist=None,
+    whitelist=None,
+    num_threads=1,
+    dry_run=False,
+    no_validate_target=False,
+    minimum_free_space=0,
+    proxies=None,
+    ssl_verify=None,
+    max_retries=100,
+):
     # Implementation:
     if not os.path.exists(os.path.join(target_directory, platform)):
         os.makedirs(os.path.join(target_directory, platform))
@@ -1200,7 +1243,7 @@ def main(
     summary["to-mirror"].update(to_mirror)
     if dry_run:
         logger.info("Dry run complete. Exiting")
-        return summary
+        return
 
     # 6. for each download:
     # a. download to temp file
@@ -1304,8 +1347,6 @@ def main(
         os.makedirs(noarch_path, exist_ok=True)
         noarch_repodata = {"info": {}, "packages": {}}
         _write_repodata(noarch_path, noarch_repodata)
-
-    return summary
 
 
 def _write_repodata(package_dir, repodata_dict):
