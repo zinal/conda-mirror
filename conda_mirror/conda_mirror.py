@@ -24,6 +24,8 @@ DEFAULT_BAD_LICENSES = ["agpl", ""]
 
 DEFAULT_PLATFORMS = ["linux-64", "linux-32", "osx-64", "win-64", "win-32"]
 
+DEFAULT_CHUNK_SIZE = 16 * 1024
+
 
 def _maybe_split_channel(channel):
     """Split channel if it is fully qualified.
@@ -130,7 +132,8 @@ def _make_arg_parser():
         ),
     )
     ap.add_argument(
-        "--target-directory", help="The place where packages should be mirrored to",
+        "--target-directory",
+        help="The place where packages should be mirrored to",
     )
     ap.add_argument(
         "--temp-directory",
@@ -160,7 +163,9 @@ def _make_arg_parser():
         default=0,
     )
     ap.add_argument(
-        "--config", action="store", help="Path to the yaml config file",
+        "--config",
+        action="store",
+        help="Path to the yaml config file",
     )
     ap.add_argument(
         "--pdb",
@@ -176,7 +181,10 @@ def _make_arg_parser():
         help="Num of threads for validation. 1: Serial mode. 0: All available.",
     )
     ap.add_argument(
-        "--version", action="store_true", help="Print version and quit", default=False,
+        "--version",
+        action="store_true",
+        help="Print version and quit",
+        default=False,
     )
     ap.add_argument(
         "--dry-run",
@@ -351,8 +359,7 @@ def _parse_and_format_args():
 
 
 def cli():
-    """Thin wrapper around parsing the cli args and calling main with them
-    """
+    """Thin wrapper around parsing the cli args and calling main with them"""
     main(**_parse_and_format_args())
 
 
@@ -471,7 +478,15 @@ def get_repodata(channel, platform, proxies=None, ssl_verify=None):
     return info, packages
 
 
-def _download(url, target_directory, proxies=None, ssl_verify=None):
+def _download(
+    url,
+    target_directory,
+    session: requests.Session,
+    *,
+    proxies=None,
+    ssl_verify=None,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+):
     """Download `url` to `target_directory`
 
     Parameters
@@ -480,6 +495,8 @@ def _download(url, target_directory, proxies=None, ssl_verify=None):
         The url to download
     target_directory : str
         The path to a directory where `url` should be downloaded
+    session: requests.Session
+        HTTP session instance.
     proxies : dict
         Proxys for connecting internet
     ssl_verify : str or bool
@@ -491,14 +508,13 @@ def _download(url, target_directory, proxies=None, ssl_verify=None):
         The size in bytes of the file that was downloaded
     """
     file_size = 0
-    chunk_size = 1024  # 1KB chunks
     logger.info("download_url=%s", url)
     # create a temporary file
     target_filename = url.split("/")[-1]
     download_filename = os.path.join(target_directory, target_filename)
     logger.debug("downloading to %s", download_filename)
     with open(download_filename, "w+b") as tf:
-        ret = requests.get(url, stream=True, proxies=proxies, verify=ssl_verify)
+        ret = session.get(url, stream=True, proxies=proxies, verify=ssl_verify)
         for data in ret.iter_content(chunk_size):
             tf.write(data)
         file_size = os.path.getsize(download_filename)
@@ -506,7 +522,14 @@ def _download(url, target_directory, proxies=None, ssl_verify=None):
 
 
 def _download_backoff_retry(
-    url, target_directory, proxies=None, ssl_verify=None, max_retries=100
+    url,
+    target_directory,
+    session: requests.Session,
+    *,
+    proxies=None,
+    ssl_verify=None,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    max_retries: int = 100,
 ):
     """Download `url` to `target_directory` with exponential backoff in the
     event of failure.
@@ -517,10 +540,14 @@ def _download_backoff_retry(
         The url to download
     target_directory : str
         The path to a directory where `url` should be downloaded
+    session: requests.Session
+        HTTP session instance.
     proxies : dict
         Proxys for connecting internet
     ssl_verify : str or bool
         Path to a CA_BUNDLE file or directory with certificates of trusted CAs
+    chunk_size: int
+        Size of contiguous chunk to download in bytes.
     max_retries : int, optional
         The maximum number of times to retry before the download error is reraised,
         default 100.
@@ -538,7 +565,12 @@ def _download_backoff_retry(
         two_c *= 2
         try:
             rtn = _download(
-                url, target_directory, proxies=proxies, ssl_verify=ssl_verify
+                url,
+                target_directory,
+                session,
+                proxies=proxies,
+                ssl_verify=ssl_verify,
+                chunk_size=chunk_size,
             )
             break
         except Exception:
@@ -679,7 +711,7 @@ def _validate_or_remove_package(args):
     else:
         # Windows does not handle multiprocessing logging well
         # TODO: Fix this properly with a logging Queue
-        sys.stdout.write("Info: "+log_msg)
+        sys.stdout.write("Info: " + log_msg)
     package_path = os.path.join(package_directory, package)
     return _validate(
         package_path, md5=package_metadata.get("md5"), size=package_metadata.get("size")
@@ -699,6 +731,7 @@ def main(
     minimum_free_space=0,
     proxies=None,
     ssl_verify=None,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
     max_retries=100,
 ):
     """
@@ -746,6 +779,8 @@ def main(
         Proxys for connecting internet
     ssl_verify : str or bool
         Path to a CA_BUNDLE file or directory with certificates of trusted CAs
+    chunk_size: int
+        Size of chunks to download in bytes. Default is 1MB.
     max_retries : int, optional
         The maximum number of times to retry before the download error is reraised,
         default 100.
@@ -890,6 +925,7 @@ def main(
     total_bytes = 0
     minimum_free_space_kb = minimum_free_space * 1024 * 1024
     download_url, channel = _maybe_split_channel(upstream_channel)
+    session = requests.Session()
     with tempfile.TemporaryDirectory(dir=temp_directory) as download_dir:
         logger.info("downloading to the tempdir %s", download_dir)
         for package_name in sorted(to_mirror):
@@ -909,8 +945,10 @@ def main(
                 total_bytes += _download_backoff_retry(
                     url,
                     download_dir,
+                    session,
                     proxies=proxies,
                     ssl_verify=ssl_verify,
+                    chunk_size=chunk_size,
                     max_retries=max_retries,
                 )
 
