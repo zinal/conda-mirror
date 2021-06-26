@@ -18,6 +18,8 @@ from pprint import pformat
 import requests
 import yaml
 
+from tqdm import tqdm
+
 logger = None
 
 DEFAULT_BAD_LICENSES = ["agpl", ""]
@@ -245,6 +247,12 @@ def _make_arg_parser():
         default=100,
         dest="max_retries",
     )
+    ap.add_argument(
+        "--no-progress",
+        action="store_false",
+        dest="show_progress",
+        help="Do not display progress bars.",
+    )
     return ap
 
 
@@ -355,6 +363,7 @@ def _parse_and_format_args():
         "proxies": proxies,
         "ssl_verify": args.ssl_verify,
         "max_retries": args.max_retries,
+        "show_progress": args.show_progress,
     }
 
 
@@ -486,6 +495,7 @@ def _download(
     proxies=None,
     ssl_verify=None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
+    show_progress=False,
 ):
     """Download `url` to `target_directory`
 
@@ -501,6 +511,8 @@ def _download(
         Proxys for connecting internet
     ssl_verify : str or bool
         Path to a CA_BUNDLE file or directory with certificates of trusted CAs
+    show_progress: bool
+        Whether to display progress bars.
 
     Returns
     -------
@@ -515,8 +527,19 @@ def _download(
     logger.debug("downloading to %s", download_filename)
     with open(download_filename, "w+b") as tf:
         ret = session.get(url, stream=True, proxies=proxies, verify=ssl_verify)
+        size = int(ret.headers.get("Content-Length", 0))
+        progress = tqdm(
+            desc=target_filename,
+            disable=(size < 1024) or not show_progress,
+            total=size,
+            leave=False,
+            unit="byte",
+            unit_scale=True,
+        )
         for data in ret.iter_content(chunk_size):
             tf.write(data)
+            progress.update(len(data))
+        progress.close()
         file_size = os.path.getsize(download_filename)
     return file_size
 
@@ -530,6 +553,7 @@ def _download_backoff_retry(
     ssl_verify=None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     max_retries: int = 100,
+    show_progress=True,
 ):
     """Download `url` to `target_directory` with exponential backoff in the
     event of failure.
@@ -551,6 +575,8 @@ def _download_backoff_retry(
     max_retries : int, optional
         The maximum number of times to retry before the download error is reraised,
         default 100.
+    show_progress: bool
+        Whether to display progress bars.
 
     Returns
     -------
@@ -571,6 +597,7 @@ def _download_backoff_retry(
                 proxies=proxies,
                 ssl_verify=ssl_verify,
                 chunk_size=chunk_size,
+                show_progress=show_progress,
             )
             break
         except Exception:
@@ -733,6 +760,7 @@ def main(
     ssl_verify=None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     max_retries=100,
+    show_progress: bool = True,
 ):
     """
 
@@ -784,6 +812,8 @@ def main(
     max_retries : int, optional
         The maximum number of times to retry before the download error is reraised,
         default 100.
+    show_progress: bool
+        Show progress bar while downloading. True by default.
 
     Returns
     -------
@@ -928,7 +958,13 @@ def main(
     session = requests.Session()
     with tempfile.TemporaryDirectory(dir=temp_directory) as download_dir:
         logger.info("downloading to the tempdir %s", download_dir)
-        for package_name in sorted(to_mirror):
+        for package_name in tqdm(
+            sorted(to_mirror),
+            desc=platform,
+            unit="package",
+            leave=False,
+            disable=not show_progress,
+        ):
             url = download_url.format(
                 channel=channel, platform=platform, file_name=package_name
             )
@@ -950,6 +986,7 @@ def main(
                     ssl_verify=ssl_verify,
                     chunk_size=chunk_size,
                     max_retries=max_retries,
+                    show_progress=show_progress,
                 )
 
                 # make sure we have enough free disk space in the target folder to meet threshold
