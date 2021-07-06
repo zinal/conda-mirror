@@ -24,18 +24,20 @@ def repodata():
 
 
 def test_match(repodata):
-    repodata_info, repodata_packages = repodata['conda-forge']
+    repodata_info, repodata_packages = repodata["conda-forge"]
     matched = conda_mirror._match(repodata_packages, {"name": "jupyter"})
     assert set([v["name"] for v in matched.values()]) == set(["jupyter"])
 
     matched = conda_mirror._match(repodata_packages, {"name": "*"})
     assert len(matched) == len(repodata_packages)
 
-    matched = conda_mirror._match(repodata_packages, dict(name='python', version='>=3.7,<3.8'))
+    matched = conda_mirror._match(
+        repodata_packages, dict(name="python", version=">=3.7,<3.8")
+    )
     assert len(matched) > 0
     for v in matched.values():
-        assert 'python' == v['name']
-        assert v['version'].startswith('3.7.')
+        assert "python" == v["name"]
+        assert v["version"].startswith("3.7.")
 
 
 def test_version():

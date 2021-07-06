@@ -117,8 +117,10 @@ def _match(all_packages, key_pattern_dict: Dict[str, str]):
 
 def _glob_matcher(pattern: str) -> Callable[[Any], bool]:
     """Returns a function that will match against given glob expression."""
+
     def _globmatch(v, p=pattern):
         return fnmatch.fnmatch(v, p)
+
     return _globmatch
 
 
