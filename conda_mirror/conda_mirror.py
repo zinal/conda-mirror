@@ -7,6 +7,7 @@ import logging
 import multiprocessing
 import os
 import pdb
+import re
 import shutil
 import sys
 import tarfile
@@ -14,6 +15,7 @@ import tempfile
 import time
 import random
 from pprint import pformat
+from typing import Any, Callable, Dict, Union
 
 import requests
 import yaml
@@ -70,41 +72,67 @@ def _maybe_split_channel(channel):
     return download_template, channel
 
 
-def _match(all_packages, key_glob_dict):
+def _match(all_packages, key_pattern_dict: Dict[str, str]):
     """
 
     Parameters
     ----------
     all_packages : iterable
         Iterable of package metadata dicts from repodata.json
-    key_glob_dict : iterable of kv pairs
-        Iterable of (key, glob_value) dicts
+    key_pattern_dict : iterable of kv pairs
+        Iterable of (key, pattern) dicts. The pattern may either
+        be a glob expression or if the key is 'version' may also
+        be a conda version specifier.
 
     Returns
     -------
     matched : dict
         Iterable of package metadata dicts which match the `target_packages`
-        (key, glob_value) tuples
+        (key, pattern) tuples
 
     """
     matched = dict()
-    key_glob_dict = {key.lower(): glob.lower() for key, glob in key_glob_dict.items()}
+    key_matcher_dict: Dict[str, Callable[[Any], bool]] = {}
+    for key, pattern in key_pattern_dict.items():
+        key = key.lower()
+        pattern = pattern.lower()
+        if key == "version" and re.search(r"[<>=^$!]", pattern):
+            # If matching the version and the pattern contains one of the characters
+            # in '<>=^$!', then use conda's version matcher, otherwise assume a glob.
+            matcher = _version_matcher(pattern)
+        else:
+            matcher = _glob_matcher(pattern)
+        key_matcher_dict[key] = matcher
     for pkg_name, pkg_info in all_packages.items():
         matched_all = []
         # normalize the strings so that comparisons are easier
-        for key, pattern in key_glob_dict.items():
-            name = str(pkg_info.get(key, "")).lower()
-            if fnmatch.fnmatch(name, pattern):
-                matched_all.append(True)
-            else:
-                matched_all.append(False)
+        for key, matcher in key_matcher_dict.items():
+            value = str(pkg_info.get(key, "")).lower()
+            matched_all.append(matcher(value))
         if all(matched_all):
             matched.update({pkg_name: pkg_info})
 
     return matched
 
 
-def _str_or_false(x):
+def _glob_matcher(pattern: str) -> Callable[[Any], bool]:
+    """Returns a function that will match against given glob expression."""
+    def _globmatch(v, p=pattern):
+        return fnmatch.fnmatch(v, p)
+    return _globmatch
+
+
+def _version_matcher(pattern: str) -> Callable[[Any], bool]:
+    """Returns a function that will match against given conda version specifier."""
+    try:
+        from conda.models.version import VersionSpec
+    except ImportError:
+        from .versionspec import VersionSpec
+
+    return VersionSpec(pattern).match
+
+
+def _str_or_false(x: str) -> Union[str, bool]:
     """
     Returns a boolean False if x is the string "False" or similar.
     Returns the original string otherwise.
