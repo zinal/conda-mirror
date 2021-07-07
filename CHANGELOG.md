@@ -2,6 +2,21 @@
 
 <!-- current developments -->
 
+## In progress - not yet released
+
+**Implemented enhancements:**
+
+* Support use of conda package version specifiers
+  [\#37](https://github.com/conda-incubator/conda-mirror/issues/37)
+* Added tqdm based progress bars. 
+  [\#29](https://github.com/conda-incubator/conda-mirror/issues/29)
+* Improve download speed, especially for smaller packages. 
+  [\#28](https://github.com/conda-incubator/conda-mirror/issues/28)
+
+**Contributors:**
+
+* Christopher Barber
+
 ## [0.8.2](https://github.com/regro/conda-mirror/tree/0.8.2) (2020-02-27)
 
 **Implemented enhancements:**
