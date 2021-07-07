@@ -6,6 +6,8 @@
 
 **Implemented enhancements:**
 
+* Added ability to include dependencies of required packages ('--include-depends`)
+  [\#22](https://github.com/conda-incubator/conda-mirror/issues/22)
 * Support use of conda package version specifiers
   [\#37](https://github.com/conda-incubator/conda-mirror/issues/37)
 * Added tqdm based progress bars. 

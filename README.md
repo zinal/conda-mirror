@@ -30,10 +30,12 @@ CLI interface for `conda-mirror.py`
 usage: conda-mirror [-h] [--upstream-channel UPSTREAM_CHANNEL]
                     [--target-directory TARGET_DIRECTORY]
                     [--temp-directory TEMP_DIRECTORY] [--platform PLATFORM]
-                    [-v] [--config CONFIG] [--pdb] [--num-threads NUM_THREADS]
-                    [--version] [--dry-run] [--no-validate-target]
+                    [-D] [-v] [--config CONFIG] [--pdb]
+                    [--num-threads NUM_THREADS] [--version] [--dry-run]
+                    [--no-validate-target]
                     [--minimum-free-space MINIMUM_FREE_SPACE] [--proxy PROXY]
-                    [--ssl-verify SSL_VERIFY] [-k] [--max-retries MAX_RETRIES]
+                    [--ssl-verify SSL_VERIFY] [-k]
+                    [--max-retries MAX_RETRIES] [--no-progress]
 
 CLI interface for conda-mirror.py
 
@@ -46,13 +48,16 @@ optional arguments:
   --target-directory TARGET_DIRECTORY
                         The place where packages should be mirrored to
   --temp-directory TEMP_DIRECTORY
-                        Temporary download location for the packages. Defaults
-                        to a randomly selected temporary directory. Note that
-                        you might need to specify a different location if your
-                        default temp directory has less available space than
-                        your mirroring target
+                        Temporary download location for the packages.
+                        Defaults to a randomly selected temporary directory.
+                        Note that you might need to specify a different
+                        location if your default temp directory has less
+                        available space than your mirroring target
   --platform PLATFORM   The OS platform(s) to mirror. one of: {'linux-64',
                         'linux-32','osx-64', 'win-32', 'win-64'}
+  -D, --include-depends
+                        Include packages matching any dependencies of
+                        packages in whitelist.
   -v, --verbose         logging defaults to error/exception only. Takes up to
                         three '-v' flags. '-v': warning. '-vv': info. '-vvv':
                         debug.
@@ -62,8 +67,8 @@ optional arguments:
                         Num of threads for validation. 1: Serial mode. 0: All
                         available.
   --version             Print version and quit
-  --dry-run             Show what will be downloaded and what will be removed.
-                        Will not validate existing packages
+  --dry-run             Show what will be downloaded and what will be
+                        removed. Will not validate existing packages
   --no-validate-target  Skip validation of files already present in target-
                         directory
   --minimum-free-space MINIMUM_FREE_SPACE
@@ -79,6 +84,7 @@ optional arguments:
   --max-retries MAX_RETRIES
                         Maximum number of retries before a download error is
                         reraised, defaults to 100
+  --no-progress         Do not display progress bars.
 ```
 
 ## Example Usage
@@ -183,6 +189,24 @@ blacklist:
 whitelist:
     - build: "*py3*"
 ```
+
+##### Mirror specified packages and their dependencies
+
+This will include all instances of botocore with at least
+version 1.4.10 along with any packages that match its
+dependencies (and likewise for dependencies of those packages).
+
+```yaml
+blacklist:
+    - name: "*"
+whitelist:
+  - name: botocore
+    version: ">=1.4.10"
+include_depends: True
+```
+
+If this includes too many packages versions, you can add additional
+entries to the whitelist to limit what will be included.
 
 ## Testing
 
