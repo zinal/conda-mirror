@@ -111,7 +111,11 @@ whitelist conditions.
 
 blacklist and whitelist both take lists of dictionaries. The keys in the
 dictionary need to be values in the `repodata.json` metadata. The values are
-(unix) globs to match on. Go here for the full repodata of the upstream
+(unix) globs to match on, but in the case of the `version` attribute,
+[conda package match version specifications](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html#package-match-specifications)
+may also be used.
+
+Go here for the full repodata of the upstream
 "defaults" channel:
 http://conda.anaconda.org/anaconda/linux-64/repodata.json
 
@@ -155,6 +159,17 @@ whitelist:
       version: 1.4.10
       build: py34_0
 ```
+
+you can use standard conda package version specifiers to filter a range of versions:
+
+```yaml
+blacklist:
+    - name: "*"
+whitelist:
+    - name: botocore
+      version: ">=1.4.10,<1.5"
+```
+
 ##### Mirror everything but agpl licenses
 ```yaml
 blacklist:
