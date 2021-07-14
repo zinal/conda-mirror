@@ -24,6 +24,7 @@ def repodata():
 
 
 def test_match(repodata):
+    """Unit test for internal _match function."""
     repodata_info, repodata_packages = repodata["conda-forge"]
     matched = conda_mirror._match(repodata_packages, {"name": "jupyter"})
     assert set([v["name"] for v in matched.values()]) == set(["jupyter"])
@@ -38,6 +39,33 @@ def test_match(repodata):
     for v in matched.values():
         assert "python" == v["name"]
         assert v["version"].startswith("3.7.")
+
+
+def test_restore_required_dependencies(repodata):
+    """Unit tests for internal _restore_required_dependencies function."""
+    from conda_mirror.conda_mirror import (
+        _match,
+        _restore_required_dependencies as restore,
+    )
+
+    _, all_packages = repodata["conda-forge"]
+    excluded = set(all_packages)
+
+    excluded2 = restore(all_packages, excluded, set())
+    assert excluded2 == excluded
+
+    conda_packages = _match(all_packages, dict(name="conda", version=">=4.10"))
+    for p in conda_packages.values():
+        assert p.get("name") == "conda"
+
+    required = set(list(conda_packages)[:1])  # just take the first match
+    excluded2 = restore(all_packages, excluded - required, required)
+    reincluded = excluded - excluded2
+    reincluded_names = set(all_packages.get(r).get("name") for r in reincluded)
+
+    assert len(excluded) > len(reincluded) > 0
+    assert "yaml" in reincluded_names
+    assert "requests" in reincluded_names
 
 
 def test_version():

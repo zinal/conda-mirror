@@ -15,12 +15,17 @@ import tempfile
 import time
 import random
 from pprint import pformat
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Set, Union
 
 import requests
 import yaml
 
 from tqdm import tqdm
+
+try:
+    from conda.models.version import BuildNumberMatch, VersionSpec
+except ImportError:
+    from .versionspec import BuildNumberMatch, VersionSpec
 
 logger = None
 
@@ -29,6 +34,9 @@ DEFAULT_BAD_LICENSES = ["agpl", ""]
 DEFAULT_PLATFORMS = ["linux-64", "linux-32", "osx-64", "win-64", "win-32"]
 
 DEFAULT_CHUNK_SIZE = 16 * 1024
+
+# Pattern matching special characters in version/build string matchers.
+VERSION_SPEC_CHARS = re.compile(r"[<>=^$!]")
 
 
 def _maybe_split_channel(channel):
@@ -72,16 +80,15 @@ def _maybe_split_channel(channel):
     return download_template, channel
 
 
-def _match(all_packages, key_pattern_dict: Dict[str, str]):
+def _match(all_packages: Dict[str, Dict[str, Any]], key_pattern_dict: Dict[str, str]):
     """
 
     Parameters
     ----------
-    all_packages : iterable
-        Iterable of package metadata dicts from repodata.json
-    key_pattern_dict : iterable of kv pairs
-        Iterable of (key, pattern) dicts. The pattern may either
-        be a glob expression or if the key is 'version' may also
+    all_packages : Dictionary mapping package file names to metadata dictionary for that instance.
+        Represents package metadata dicts from repodata.json
+    key_pattern_dict : Dictionary mapping keys to patterns
+        The pattern may either be a glob expression or if the key is 'version' may also
         be a conda version specifier.
 
     Returns
@@ -91,25 +98,33 @@ def _match(all_packages, key_pattern_dict: Dict[str, str]):
         (key, pattern) tuples
 
     """
+
     matched = dict()
-    key_matcher_dict: Dict[str, Callable[[Any], bool]] = {}
-    for key, pattern in key_pattern_dict.items():
+    matchers: Dict[str, Callable[[Any], bool]] = {}
+    for key, pattern in sorted(key_pattern_dict.items()):
         key = key.lower()
         pattern = pattern.lower()
-        if key == "version" and re.search(r"[<>=^$!]", pattern):
+        if key == "version" and VERSION_SPEC_CHARS.search(pattern):
             # If matching the version and the pattern contains one of the characters
             # in '<>=^$!', then use conda's version matcher, otherwise assume a glob.
+            if " " in pattern:
+                # version spec also contains a build string match
+                pattern, build_pattern = pattern.split(" ", maxsplit=1)
+                if "build" not in matchers:
+                    matchers["build"] = _build_matcher(build_pattern)
             matcher = _version_matcher(pattern)
+        elif key == "build" and VERSION_SPEC_CHARS.search(pattern):
+            matcher = _build_matcher(pattern)
         else:
             matcher = _glob_matcher(pattern)
-        key_matcher_dict[key] = matcher
+        matchers[key] = matcher
+
     for pkg_name, pkg_info in all_packages.items():
-        matched_all = []
         # normalize the strings so that comparisons are easier
-        for key, matcher in key_matcher_dict.items():
-            value = str(pkg_info.get(key, "")).lower()
-            matched_all.append(matcher(value))
-        if all(matched_all):
+        if all(
+            matcher(str(pkg_info.get(key, "")).lower())
+            for key, matcher in matchers.items()
+        ):
             matched.update({pkg_name: pkg_info})
 
     return matched
@@ -126,12 +141,95 @@ def _glob_matcher(pattern: str) -> Callable[[Any], bool]:
 
 def _version_matcher(pattern: str) -> Callable[[Any], bool]:
     """Returns a function that will match against given conda version specifier."""
-    try:
-        from conda.models.version import VersionSpec
-    except ImportError:
-        from .versionspec import VersionSpec
+    # Throw away build string pattern if present.
+    return VersionSpec(pattern.split(" ")[0]).match
 
-    return VersionSpec(pattern).match
+
+def _build_matcher(pattern: str) -> Callable[[Any], bool]:
+    """Returns a function that will match against a build string"""
+    return BuildNumberMatch(pattern).match
+
+
+class DependsMatcher:
+    """Implements a function that matches against version and build attributes of package info"""
+
+    def __init__(self, pattern: str):
+        if not pattern:
+            pattern = "*"
+        parts = pattern.split(" ", maxsplit=1)
+        self._version_matcher = _version_matcher(parts[0])
+        if len(parts) > 1:
+            self._build_matcher = _build_matcher(parts[1])
+        else:
+            self._build_matcher = lambda _: True
+
+    def __call__(self, pkg_info: Dict[str, Any]) -> bool:
+        return self._version_matcher(
+            pkg_info.get("version", "")
+        ) and self._build_matcher(pkg_info.get("build", ""))
+
+
+def _restore_required_dependencies(
+    all_packages: Dict[str, Dict[str, Any]],
+    excluded: Set[str],
+    required: Set[str],
+) -> Set[str]:
+    """Recursively removes dependencies of required packages from excluded packages.
+
+    This removes from the `excluded` package list any packages that are direct or
+    indirect dependencies of the `required` package list. It is assumed that the
+    excluded and required sets are disjoint.
+
+    Parameters
+    ----------
+    all_packages:
+        Dictionary mapping package filename to metadata dictionary representing
+        contents of repodata.json.
+    excluded:
+        Initial set of package filenames to be excluded from download.
+    required:
+        Set of package filenames initially to be included.
+
+    Returns
+    -------
+    New set of excluded packages with dependencies removed.
+    """
+
+    cur_required = set(required)
+
+    # TODO - support platform-specific + noarch
+
+    already_required = set(all_packages.get(r, {}).get("name") for r in required)
+
+    final_excluded: Set[str] = set(excluded)
+
+    while len(final_excluded) > 0 and len(cur_required) > 0:
+        required_depend_specs: Dict[str, Set[str]] = {}
+
+        # collate version specs of dependencies package by package name
+        for req in cur_required:
+            info = all_packages.get(req, {})
+            for dep in info.get("depends", ()):
+                try:
+                    pkg_name, version_spec = dep.split(maxsplit=1)
+                except ValueError:
+                    pkg_name, version_spec = dep, ""
+                if pkg_name not in already_required:
+                    required_depend_specs.setdefault(pkg_name, set()).add(version_spec)
+
+        cur_required.clear()
+
+        for k in list(final_excluded):
+            info = all_packages.get(k, {})
+            pkg_name = info.get("name")
+            for version_spec in required_depend_specs.get(pkg_name, ()):
+                matcher = DependsMatcher(version_spec)
+                if matcher(info):
+                    final_excluded.remove(k)
+                    cur_required.add(k)
+                    break
+
+    return final_excluded
 
 
 def _str_or_false(x: str) -> Union[str, bool]:
@@ -183,6 +281,12 @@ def _make_arg_parser():
             "The OS platform(s) to mirror. one of: {'linux-64', 'linux-32',"
             "'osx-64', 'win-32', 'win-64'}"
         ),
+    )
+    ap.add_argument(
+        "-D",
+        "--include-depends",
+        action="store_true",
+        help=("Include packages matching any dependencies of packages in whitelist."),
     )
     ap.add_argument(
         "-v",
@@ -387,6 +491,7 @@ def _parse_and_format_args():
         "num_threads": args.num_threads,
         "blacklist": blacklist,
         "whitelist": whitelist,
+        "include_depends": args.include_depends,
         "dry_run": args.dry_run,
         "no_validate_target": args.no_validate_target,
         "minimum_free_space": args.minimum_free_space,
@@ -782,6 +887,7 @@ def main(
     platform,
     blacklist=None,
     whitelist=None,
+    include_depends=False,
     num_threads=1,
     dry_run=False,
     no_validate_target=False,
@@ -820,6 +926,9 @@ def main(
         The values of blacklist should be (key, glob) where key is one of the
         keys in the repodata['packages'] dicts and glob is a thing to match
         on.  Note that all comparisons will be laundered through lowercasing.
+    include_depends: bool
+        If true, then include packages matching dependencies of whitelisted
+        packages as well.
     num_threads : int, optional
         Number of threads to be used for concurrent validation.  Defaults to
         `num_threads=1` for non-concurrent mode.  To use all available cores,
@@ -915,31 +1024,35 @@ def main(
     #                    package_directory=local_directory,
     #                    num_threads=num_threads)
 
-    # 2. figure out blacklisted packages
-    blacklist_packages = {}
-    whitelist_packages = {}
+    # 2. figure out excluded packages
+    excluded_packages: Set[str] = set()
+    required_packages: Set[str] = set()
     # match blacklist conditions
     if blacklist:
-        blacklist_packages = {}
         for blist in blacklist:
-            logger.debug("blacklist item: %s", blist)
-            matched_packages = _match(packages, blist)
-            logger.debug(pformat(list(matched_packages.keys())))
-            blacklist_packages.update(matched_packages)
+            logger.debug("exclude item: %s", blist)
+            matched_packages = list(_match(packages, blist))
+            logger.debug(pformat(matched_packages))
+            excluded_packages.update(matched_packages)
 
     # 3. un-blacklist packages that are actually whitelisted
     # match whitelist on blacklist
     if whitelist:
-        whitelist_packages = {}
         for wlist in whitelist:
-            matched_packages = _match(packages, wlist)
-            whitelist_packages.update(matched_packages)
+            matched_packages = list(_match(packages, wlist))
+            required_packages.update(matched_packages)
+        excluded_packages.difference_update(required_packages)
+
+    if include_depends:
+        excluded_packages = _restore_required_dependencies(
+            packages, excluded_packages, required_packages
+        )
+
     # make final mirror list of not-blacklist + whitelist
-    true_blacklist = set(blacklist_packages.keys()) - set(whitelist_packages.keys())
-    summary["blacklisted"].update(true_blacklist)
+    summary["blacklisted"].update(excluded_packages)
 
     logger.info("BLACKLISTED PACKAGES")
-    logger.info(pformat(true_blacklist))
+    logger.info(pformat(sorted(excluded_packages)))
 
     # Get a list of all packages in the local mirror
     if dry_run:
@@ -950,9 +1063,9 @@ def main(
             if pkg_name in summary["blacklisted"]
         ]
         logger.info("PACKAGES TO BE REMOVED")
-        logger.info(pformat(packages_slated_for_removal))
+        logger.info(pformat(sorted(packages_slated_for_removal)))
 
-    possible_packages_to_mirror = set(packages.keys()) - true_blacklist
+    possible_packages_to_mirror = set(packages.keys()) - excluded_packages
 
     # 4. Validate all local packages
     # construct the desired package repodata
