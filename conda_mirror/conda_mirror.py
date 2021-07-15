@@ -31,7 +31,7 @@ logger = None
 
 DEFAULT_BAD_LICENSES = ["agpl", ""]
 
-DEFAULT_PLATFORMS = ["linux-64", "linux-32", "osx-64", "win-64", "win-32"]
+DEFAULT_PLATFORMS = ["linux-64", "linux-32", "osx-64", "win-64", "win-32", "noarch"]
 
 DEFAULT_CHUNK_SIZE = 16 * 1024
 
@@ -241,7 +241,6 @@ def _str_or_false(x: str) -> Union[str, bool]:
         x = False
     return x
 
-
 def _make_arg_parser():
     """
     Localize the ArgumentParser logic
@@ -280,8 +279,7 @@ def _make_arg_parser():
         action="append",
         default=[],
         help=(
-            "The OS platform(s) to mirror. one of: {'linux-64', 'linux-32',"
-            "'osx-64', 'win-32', 'win-64'}. "
+            f"The OS platform(s) to mirror. one of: {', '.join(DEFAULT_PLATFORMS)} "
             "May be specified multiple times."
         ),
     )
@@ -1015,7 +1013,7 @@ def main(
         apply checks
     platform : Union[str,List[str]]
         The platforms that you wish to mirror. Common options are
-        'linux-64', 'osx-64', 'win-64' and 'win-32'. Any platform is valid as
+        'linux-64', 'osx-64', 'win-64', 'win-32' and 'noarch'. Any platform is valid as
         long as the url resolves.
     blacklist : iterable of tuples, optional
         The values of blacklist should be (key, glob) where key is one of the
