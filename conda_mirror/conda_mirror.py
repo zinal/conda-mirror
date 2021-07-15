@@ -251,7 +251,11 @@ def _make_arg_parser():
     argument_parser : argparse.ArgumentParser
         The instantiated argument parser for this CLI
     """
-    ap = argparse.ArgumentParser(description="CLI interface for conda-mirror.py")
+    ap = argparse.ArgumentParser(
+        description="""
+        Makes a partial copy of a conda channel in a local directory.
+        """
+    )
 
     ap.add_argument(
         "--upstream-channel",
@@ -757,8 +761,11 @@ def _list_conda_packages(local_dir):
     list
         List of conda packages in `local_dir`
     """
-    contents = os.listdir(local_dir)
-    return fnmatch.filter(contents, "*.tar.bz2")
+    results = []
+    if os.path.isdir(local_dir):
+        contents = os.listdir(local_dir)
+        results.extend(fnmatch.filter(contents, "*.tar.bz2"))
+    return results
 
 
 def _validate_packages(package_repodata, package_directory, num_threads=1):
@@ -1008,13 +1015,13 @@ def main(
         "to-mirror": set(),
     }
     # Implementation:
-    if not os.path.exists(os.path.join(target_directory, platform)):
-        os.makedirs(os.path.join(target_directory, platform))
+    local_directory = os.path.join(target_directory, platform)
+    if not dry_run:
+        os.makedirs(local_directory, exist_ok=True)
 
     info, packages = get_repodata(
         upstream_channel, platform, proxies=proxies, ssl_verify=ssl_verify
     )
-    local_directory = os.path.join(target_directory, platform)
 
     # 1. validate local repo
     # validating all packages is taking many hours.
