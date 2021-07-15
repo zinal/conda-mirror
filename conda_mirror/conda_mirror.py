@@ -241,6 +241,7 @@ def _str_or_false(x: str) -> Union[str, bool]:
         x = False
     return x
 
+
 def _make_arg_parser():
     """
     Localize the ArgumentParser logic
@@ -276,9 +277,7 @@ def _make_arg_parser():
     )
     ap.add_argument(
         "--platform",
-        help=(
-            f"The OS platform(s) to mirror. one of: {', '.join(DEFAULT_PLATFORMS)}"
-        ),
+        help=(f"The OS platform(s) to mirror. one of: {', '.join(DEFAULT_PLATFORMS)}"),
     )
     ap.add_argument(
         "-D",
@@ -388,12 +387,12 @@ def _make_arg_parser():
     return ap
 
 
-def _init_logger(verbosity):
+def _init_logger(verbosity: int) -> None:
     # set up the logger
     global logger
     logger = logging.getLogger("conda_mirror")
     logmap = {0: logging.ERROR, 1: logging.WARNING, 2: logging.INFO, 3: logging.DEBUG}
-    loglevel = logmap.get(verbosity, "3")
+    loglevel = logmap.get(min(int(verbosity), 3))
 
     # clear all handlers
     for handler in logger.handlers:
@@ -407,9 +406,8 @@ def _init_logger(verbosity):
 
     logger.addHandler(stream_handler)
 
-    print(
-        "Log level set to %s" % logging.getLevelName(logmap[verbosity]), file=sys.stdout
-    )
+    if verbosity > 0:
+        print("Log level set to %s" % logging.getLevelName(loglevel))
 
 
 def _parse_and_format_args():
@@ -421,14 +419,16 @@ def _parse_and_format_args():
     # parse arguments without setting defaults
     given_args, _ = parser._parse_known_args(sys.argv[1:], argparse.Namespace())
 
-    _init_logger(args.verbose)
-    logger.debug("sys.argv: %s", sys.argv)
-
     if args.version:
         from . import __version__
 
         print(__version__)
         sys.exit(1)
+
+    verbosity = int(args.verbose)
+
+    _init_logger(verbosity)
+    logger.debug("sys.argv: %s", sys.argv)
 
     config_dict = {}
     if args.config:
