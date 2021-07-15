@@ -430,6 +430,8 @@ def _parse_and_format_args():
         sys.exit(1)
 
     verbosity = int(args.verbose)
+    if args.dry_run:
+        verbosity = max(verbosity, 2)
 
     _init_logger(verbosity)
     logger.debug("sys.argv: %s", sys.argv)
@@ -1056,8 +1058,8 @@ def main(
     # make final mirror list of not-blacklist + whitelist
     summary["blacklisted"].update(excluded_packages)
 
-    logger.info("BLACKLISTED PACKAGES")
-    logger.info(pformat(sorted(excluded_packages)))
+    logger.debug("EXCLUDED PACKAGES")  # this can be very long, so log at debug level
+    logger.debug(pformat(sorted(excluded_packages)))
 
     # Get a list of all packages in the local mirror
     if dry_run:
