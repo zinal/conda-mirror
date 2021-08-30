@@ -25,6 +25,8 @@
   [\#22](https://github.com/conda-incubator/conda-mirror/issues/22)
 * Support use of conda package version specifiers
   [\#37](https://github.com/conda-incubator/conda-mirror/issues/37)
+* Options to only get n latest versions of matching packages. 
+  [\#52](https://github.com/conda-incubator/conda-mirror/issues/52)
 * Added tqdm based progress bars. 
   [\#29](https://github.com/conda-incubator/conda-mirror/issues/29)
 * Improve download speed, especially for smaller packages. 

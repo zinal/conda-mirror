@@ -15,7 +15,7 @@ import tempfile
 import time
 import random
 from pprint import pformat
-from typing import Any, Callable, Dict, Set, Union
+from typing import Any, Callable, Dict, Iterable, Set, Union, List, NamedTuple
 
 import requests
 import yaml
@@ -25,7 +25,7 @@ from tqdm import tqdm
 try:
     from conda.models.version import BuildNumberMatch, VersionSpec
 except ImportError:
-    from .versionspec import BuildNumberMatch, VersionSpec
+    from .versionspec import BuildNumberMatch, VersionSpec, VersionOrder
 
 logger = None
 
@@ -289,6 +289,27 @@ def _make_arg_parser():
         help=("Include packages matching any dependencies of packages in whitelist."),
     )
     ap.add_argument(
+        "--latest",
+        metavar="<n>",
+        type=int,
+        nargs="?",
+        const=1,
+        default=-1,
+        help=(
+            "Only download most-recent <n> non-dev instance(s) of each package. "
+            "If specified then "
+        ),
+    )
+    ap.add_argument(
+        "--latest-dev",
+        metavar="<n>",
+        type=int,
+        nargs="?",
+        const=1,
+        default=-1,
+        help="Only download most-recent <n> dev instance(s) of each package.",
+    )
+    ap.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -483,6 +504,14 @@ def _parse_and_format_args():
         else:
             url = "{}:{}".format(scheme, url[0])
         proxies = {scheme: url}
+
+    latest_dev = int(args.latest_dev)
+    latest_non_dev = int(args.latest)
+
+    # If --latest is specified, then --latest-dev are specified defaults to zero.
+    if latest_dev < 0 and latest_non_dev >= 0:
+        latest_dev = 0
+
     return {
         "upstream_channel": args.upstream_channel,
         "target_directory": args.target_directory,
@@ -492,6 +521,8 @@ def _parse_and_format_args():
         "blacklist": blacklist,
         "whitelist": whitelist,
         "include_depends": args.include_depends,
+        "latest_dev": latest_dev,
+        "latest_non_dev": latest_non_dev,
         "dry_run": args.dry_run,
         "no_validate_target": args.no_validate_target,
         "minimum_free_space": args.minimum_free_space,
@@ -881,6 +912,68 @@ def _validate_or_remove_package(args):
     )
 
 
+def _find_non_recent_packages(
+    packages: Dict[str, Dict[str, Any]],
+    *,
+    include: Iterable[str],
+    latest_non_dev: int,
+    latest_dev: int,
+) -> Set[str]:
+    """Computes set of package filenames that are not sufficiently recent
+
+    Parameters
+    ----------
+    packages: packages dictionary from repodata.json
+    include: package filenames to be considered
+    latest_non_dev: number of non-dev packages that are sufficiently recent to be included
+        if negative, then all non-dev packages will be included
+    latest_dev: number of dev packages that are sufficnetly recent to be included
+        if negative, then all dev packages will be included
+
+    Returns
+    -------
+    non-recent packages: Set[str]
+       Package filenames that are not sufficiently recent. This will be a subset of `include`
+    """
+
+    non_recent_packages: Set[str] = set()
+
+    if latest_non_dev >= 0 or latest_dev >= 0:
+
+        class PackageAndVersion(NamedTuple):
+            package_file: str
+            version: VersionOrder
+
+        packages_by_name: Dict[str, List[PackageAndVersion]] = {}
+        for key in include:
+            metadata = packages[key]
+            try:
+                packages_by_name.setdefault(metadata["name"], []).append(
+                    PackageAndVersion(key, VersionOrder(metadata["version"]))
+                )
+            except KeyError:
+                pass  # ignore bad entries
+
+        for curpackages in packages_by_name.values():
+            curpackages.sort(
+                key=lambda x: x.version, reverse=True
+            )  # recent versions first
+            dev_versions = [
+                p.package_file for p in curpackages if "DEV" in p.version.version[-1]
+            ]
+            non_dev_versions = [
+                p.package_file
+                for p in curpackages
+                if "DEV" not in p.version.version[-1]
+            ]
+            if latest_dev >= 0:
+                non_recent_packages.update(dev_versions[latest_dev:])
+            if latest_non_dev >= 0:
+                non_recent_packages.update(non_dev_versions[latest_non_dev:])
+
+    return non_recent_packages
+
+
 def main(
     upstream_channel,
     target_directory,
@@ -889,6 +982,8 @@ def main(
     blacklist=None,
     whitelist=None,
     include_depends=False,
+    latest_non_dev: int = -1,
+    latest_dev: int = -1,
     num_threads=1,
     dry_run=False,
     no_validate_target=False,
@@ -930,6 +1025,12 @@ def main(
     include_depends: bool
         If true, then include packages matching dependencies of whitelisted
         packages as well.
+    latest_dev: int
+        If >= zero, then only that number of the most recent development versions of
+        each package in a repo subdir will be downloaded.
+    latest_non_dev: int
+        If >= zero, then only that number of the most recent non development versions of
+        each package in a repo subdir will be downloaded.
     num_threads : int, optional
         Number of threads to be used for concurrent validation.  Defaults to
         `num_threads=1` for non-concurrent mode.  To use all available cores,
@@ -993,6 +1094,7 @@ def main(
      'size': 1960193,
      'version': '8.5.18'}
     """
+    # TODO update these comments. They are no longer totally correct.
     # Steps:
     # 1. figure out blacklisted packages
     # 2. un-blacklist packages that are actually whitelisted
@@ -1067,6 +1169,15 @@ def main(
         logger.info(pformat(sorted(packages_slated_for_removal)))
 
     possible_packages_to_mirror = set(packages.keys()) - excluded_packages
+
+    # 3b remove non-latest packages if so specified.
+    non_recent_packages = _find_non_recent_packages(
+        packages,
+        include=possible_packages_to_mirror,
+        latest_non_dev=latest_non_dev,
+        latest_dev=latest_dev,
+    )
+    possible_packages_to_mirror -= non_recent_packages
 
     # 4. Validate all local packages
     # construct the desired package repodata
