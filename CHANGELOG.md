@@ -6,6 +6,21 @@
 
 **Implemented enhancements:**
 
+* tba
+
+**Contributors:**
+
+* tba
+
+## [0.9.0](https://github.com/regro/conda-mirror/tree/0.9.0) (2023-01-13)
+
+**Implemented enhancements:**
+
+* Address the lack of support of `.conda` packages
+  [\#10](https://github.com/conda-incubator/conda-mirror/issues/10)
+* CI: Convert Travis to GitHub workflow
+* Support ability to include dependencies of whitelist
+  [\#42](https://github.com/conda-incubator/conda-mirror/issues/42)
 * Added ability to include dependencies of required packages ('--include-depends`)
   [\#22](https://github.com/conda-incubator/conda-mirror/issues/22)
 * Support use of conda package version specifiers
@@ -14,10 +29,18 @@
   [\#29](https://github.com/conda-incubator/conda-mirror/issues/29)
 * Improve download speed, especially for smaller packages. 
   [\#28](https://github.com/conda-incubator/conda-mirror/issues/28)
+* Add optional targets for reference.json and update.tar to conda-diff-tar
+  [\#19](https://github.com/conda-incubator/conda-mirror/issues/19)
+* Switch to using yaml.safe_load to avoid Deprecation warnings.
 
 **Contributors:**
 
 * Christopher Barber
+* Faustin Carter
+* Alessandro Silenzi
+* Simon Li
+* Uwe L. Korn
+
 
 ## [0.8.2](https://github.com/regro/conda-mirror/tree/0.8.2) (2020-02-27)
 
