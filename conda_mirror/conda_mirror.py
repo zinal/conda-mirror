@@ -23,7 +23,7 @@ import yaml
 from tqdm import tqdm
 
 try:
-    from conda.models.version import BuildNumberMatch, VersionSpec
+    from conda.models.version import BuildNumberMatch, VersionSpec, VersionOrder
 except ImportError:
     from .versionspec import BuildNumberMatch, VersionSpec, VersionOrder
 
