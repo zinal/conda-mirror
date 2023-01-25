@@ -1132,6 +1132,10 @@ def main(
             proxies=proxies,
             ssl_verify=ssl_verify,
             max_retries=max_retries,
+            include_depends=include_depends,
+            latest_non_dev=latest_non_dev,
+            latest_dev=latest_dev,
+            show_progress=show_progress,
         )
 
     return summary
@@ -1152,6 +1156,10 @@ def _download_platform(
     proxies=None,
     ssl_verify=None,
     max_retries=100,
+    include_depends=False,
+    latest_non_dev: int = -1,
+    latest_dev: int = -1,
+    show_progress: bool = True,
 ):
     # Implementation:
     if not os.path.exists(os.path.join(target_directory, platform)):
