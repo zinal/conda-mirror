@@ -767,7 +767,9 @@ def _list_conda_packages(local_dir):
     results = []
     if os.path.isdir(local_dir):
         contents = os.listdir(local_dir)
-        results = [fn for fn in contents if fn.endswith(".tar.bz2") or fn.endswith(".conda")]
+        results = [
+            fn for fn in contents if fn.endswith(".tar.bz2") or fn.endswith(".conda")
+        ]
     return results
 
 

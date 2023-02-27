@@ -522,7 +522,6 @@ class VersionSpec(
         super(VersionSpec, self).__init__(vspec_str, matcher, is_exact)
 
     def get_matcher(self, vspec):
-
         if isinstance(vspec, str) and regex_split_re.match(vspec):
             vspec = treeify(vspec)
 
