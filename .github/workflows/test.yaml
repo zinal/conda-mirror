@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python:
+          - "3.7"
+          - "3.10"
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-test.txt codecov
+
+      - name: Install editable package
+        run: |
+          pip install -e .
+
+      - name: Run tests
+        run: |
+          conda-mirror -h
+          coverage run --concurrency=multiprocessing run_tests.py
+          coverage combine
+          coverage report -m
+          make format-check
+          make lint
